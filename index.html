@@ -2,479 +2,846 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pulso — FC y HRV en local</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Pulso</title>
 <style>
-:root{--bg:#0f1115;--panel:#171a21;--line:#262b36;--txt:#e6e8ec;--mut:#8b93a3;--acc:#3fb6a8;--warn:#e0a03a;--bad:#e0605a;--good:#58c27d}
+:root{--bg:#0f1115;--panel:#171a21;--line:#262b36;--txt:#e6e8ec;--mut:#8b93a3;--acc:#3fb6a8;--warn:#e0a03a;--bad:#e0605a;--good:#58c27d;--blue:#4f8cc9;--vio:#9b7fe0}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-header h1{font-size:18px;margin:0;letter-spacing:.5px}
-header .st{color:var(--mut);font-size:13px}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--bad);display:inline-block;margin-right:6px}
-.dot.on{background:var(--good)}
-main{max-width:1150px;margin:0 auto;padding:18px;display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
-.c4{grid-column:span 4}.c6{grid-column:span 6}.c8{grid-column:span 8}.c12{grid-column:span 12}
-@media(max-width:860px){.c4,.c6,.c8{grid-column:span 12}}
-h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);margin:0 0 10px;font-weight:600}
-.big{font-size:52px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
-.unit{font-size:14px;color:var(--mut);margin-left:4px}
-.row{display:flex;gap:16px;flex-wrap:wrap;align-items:baseline}
-.kv{min-width:90px}.kv b{display:block;font-size:20px;font-variant-numeric:tabular-nums}.kv span{color:var(--mut);font-size:12px}
-button{background:#232833;color:var(--txt);border:1px solid #333a48;border-radius:7px;padding:7px 12px;font:inherit;cursor:pointer}
+body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;background:#0f1115ee;backdrop-filter:blur(6px);display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:17px;margin:0;letter-spacing:1px}
+.st{color:var(--mut);font-size:12px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--bad);display:inline-block;margin-right:5px}.dot.on{background:var(--good)}
+@media(max-width:600px){header{gap:6px;padding:8px 10px}header button{padding:5px 8px;font-size:12px}#cov{display:none}}
+.hhr{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:5;display:flex;background:#12151b;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border:0;border-radius:0;color:var(--mut);padding:10px 0 9px;font-size:12px}
+nav button.on{color:var(--acc);font-weight:600}
+main{max-width:1150px;margin:0 auto;padding:14px;display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+.tab{display:contents}.tab[hidden]{display:none}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c6{grid-column:span 6}.c8{grid-column:span 8}.c12{grid-column:span 12}
+@media(max-width:860px){.c3,.c4,.c6,.c8{grid-column:span 12}}
+h2{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);margin:0 0 10px;font-weight:600}
+.big{font-size:44px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.unit{font-size:13px;color:var(--mut);margin-left:4px}
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:baseline}
+.kv{min-width:84px}.kv b{display:block;font-size:18px;font-variant-numeric:tabular-nums}.kv span{color:var(--mut);font-size:11.5px}
+button{background:#232833;color:var(--txt);border:1px solid #333a48;border-radius:8px;padding:7px 12px;font:inherit;cursor:pointer}
 button:hover{border-color:var(--acc)}button.pri{background:var(--acc);border-color:var(--acc);color:#06221f;font-weight:600}
-button:disabled{opacity:.45;cursor:not-allowed}
-input,select{background:#0f1218;color:var(--txt);border:1px solid #333a48;border-radius:6px;padding:5px 7px;font:inherit;width:90px}
+button:disabled{opacity:.45;cursor:not-allowed}button.sm{padding:3px 8px;font-size:12px}
+input,select{background:#0f1218;color:var(--txt);border:1px solid #333a48;border-radius:6px;padding:6px 8px;font:inherit;width:110px}
 label{color:var(--mut);font-size:12px;display:flex;flex-direction:column;gap:3px}
 canvas{width:100%;display:block}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-th,td{text-align:right;padding:5px 6px;border-bottom:1px solid var(--line);font-size:13px}
-th:first-child,td:first-child{text-align:left}th{color:var(--mut);font-weight:500}
-.zones{display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:8px;background:#0f1218}
-.zl{display:flex;gap:10px;flex-wrap:wrap;color:var(--mut);font-size:12px;margin-top:6px}
-.msg{color:var(--warn);font-size:12px;min-height:16px;margin-top:6px}
-.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600}
+th,td{text-align:right;padding:5px 6px;border-bottom:1px solid var(--line);font-size:12.5px;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}th{color:var(--mut);font-weight:500;position:sticky;top:0;background:var(--panel)}
+tr.click{cursor:pointer}tr.click:hover td{background:#1d212a}
+.scroll{max-height:380px;overflow:auto}
 .note{color:var(--mut);font-size:12px}
-.scroll{max-height:260px;overflow:auto}
+.msg{color:var(--warn);font-size:12px;min-height:0}
+.rings{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center}
+@media(max-width:600px){.rings{grid-template-columns:repeat(3,1fr)}}
+.ring svg{width:100%;max-width:120px;height:auto}
+.ring .lb{font-size:12px;color:var(--mut);margin-top:2px}.ring .sb{font-size:11px;color:var(--mut)}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;color:#0b0d11}
+.ins{margin:0;padding-left:18px}.ins li{margin:3px 0}
+.seg{display:flex;height:12px;border-radius:6px;overflow:hidden;background:#0f1218;margin:6px 0}
+.leg{display:flex;gap:10px;flex-wrap:wrap;color:var(--mut);font-size:11.5px}
+.daynav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+details summary{cursor:pointer;color:var(--acc)}
+.method p{margin:6px 0;font-size:12.5px;color:#c4c9d3}
 </style>
 </head>
 <body>
 <header>
   <h1>PULSO</h1>
   <span class="st"><span id="dot" class="dot"></span><span id="status">Desconectado</span></span>
-  <span class="st" id="batt"></span>
+  <span class="hhr" id="hHr">--</span><span class="st">ppm</span>
+  <span class="st" id="cov"></span>
   <span style="flex:1"></span>
-  <button class="pri" id="bConnect">Conectar pulsera</button>
+  <button class="pri" id="bConnect">Conectar</button>
   <button id="bDisc" disabled>Desconectar</button>
-  <button id="bSim" title="Datos simulados para probar la interfaz">Modo demo</button>
+  <button id="bWake" title="Mantiene la pantalla encendida para que el registro no se pare">Pantalla: normal</button>
 </header>
+<div class="msg" id="msg" style="padding:0 16px"></div>
 
 <main>
-  <section class="card c4">
-    <h2>Frecuencia cardíaca</h2>
-    <div><span class="big" id="hr">--</span><span class="unit">ppm</span></div>
-    <div class="row" style="margin-top:12px">
-      <div class="kv"><b id="hrPct">--</b><span>% FCmáx</span></div>
-      <div class="kv"><b id="zoneNow">--</b><span>Zona</span></div>
-      <div class="kv"><b id="rrLast">--</b><span>Último RR (ms)</span></div>
+<!-- =================== HOY =================== -->
+<section class="tab" id="t-hoy">
+  <div class="card c12">
+    <div class="daynav"><button class="sm" id="dPrev">◀</button><b id="dLabel"></b><button class="sm" id="dNext">▶</button><button class="sm" id="dToday">Hoy</button><span style="flex:1"></span><span class="note" id="dCov"></span></div>
+    <div class="rings" id="rings" style="margin-top:12px"></div>
+  </div>
+  <div class="card c4">
+    <h2>Edad fitness</h2>
+    <div id="ageBox" class="note">Configura tu año de nacimiento en Ajustes.</div>
+  </div>
+  <div class="card c4">
+    <h2>En directo</h2>
+    <div class="row">
+      <div class="kv"><b id="lHr">--</b><span>FC</span></div>
+      <div class="kv"><b id="lZone">--</b><span>Zona</span></div>
+      <div class="kv"><b id="lRm">--</b><span>RMSSD 60 s</span></div>
+      <div class="kv"><b id="lSt">--</b><span>Estrés ahora</span></div>
+      <div class="kv"><b id="lEn">--</b><span>Energía</span></div>
     </div>
-    <div class="msg" id="rrMsg"></div>
-  </section>
+    <div class="note" id="lNote" style="margin-top:6px"></div>
+  </div>
+  <div class="card c4">
+    <h2>Claves del día</h2>
+    <ul class="ins" id="insights"><li class="note">Sin datos todavía.</li></ul>
+  </div>
+  <div class="card c12">
+    <h2>Día completo · FC, estrés y energía</h2>
+    <canvas id="cDay" height="230"></canvas>
+    <div class="leg" style="margin-top:6px"><span><span style="color:var(--acc)">━</span> FC</span><span><span style="color:var(--vio)">━</span> Energía</span><span><span style="color:#58c27d">▮</span> Reposo</span><span><span style="color:#c9b84f">▮</span> Estrés bajo</span><span><span style="color:#e0a03a">▮</span> Medio</span><span><span style="color:#e0605a">▮</span> Alto</span><span><span style="color:#4f8cc9">▮</span> Actividad</span><span><span style="color:#3a4a7a">▮</span> Sueño</span></div>
+  </div>
+  <div class="card c6">
+    <h2>Estrés del día</h2>
+    <div class="seg" id="stSeg"></div><div class="leg" id="stLeg"></div>
+  </div>
+  <div class="card c6">
+    <h2>Actividad del día</h2>
+    <div class="row" id="actBox"></div>
+    <div class="seg" id="zSeg"></div><div class="leg" id="zLeg"></div>
+  </div>
+</section>
 
-  <section class="card c4">
-    <h2>HRV en directo (ventana 60 s)</h2>
-    <div><span class="big" id="rmssd">--</span><span class="unit">ms RMSSD</span></div>
-    <div class="row" style="margin-top:12px">
-      <div class="kv"><b id="lnr">--</b><span>ln RMSSD</span></div>
-      <div class="kv"><b id="nRR">0</b><span>Latidos válidos</span></div>
-      <div class="kv"><b id="art">0%</b><span>Artefactos</span></div>
+<!-- =================== SUEÑO =================== -->
+<section class="tab" id="t-sueno" hidden>
+  <div class="card c4">
+    <h2>Registro nocturno</h2>
+    <div id="nightState" class="note">Modo noche desactivado.</div>
+    <div class="row" style="margin-top:10px">
+      <button class="pri" id="bNight">Me voy a dormir</button>
+      <button id="bDetect">Detectar sueño</button>
     </div>
-    <div class="note" style="margin-top:8px">La HRV en movimiento no es comparable; la referencia es la medición matinal.</div>
-  </section>
+    <div class="note" style="margin-top:8px">Si no pulsas nada, el sueño se detecta solo a partir de la FC (necesita la noche registrada). En iPhone: deja el móvil cargando, Bluefy abierto y "Pantalla: encendida".</div>
+  </div>
+  <div class="card c8">
+    <h2>Última noche <span id="sDate"></span></h2>
+    <div id="sleepBox" class="note">Sin noches analizadas.</div>
+  </div>
+  <div class="card c12">
+    <h2>Fases estimadas</h2>
+    <canvas id="cHyp" height="150"></canvas>
+    <div class="note">Estimación solo con FC/HRV (sin acelerómetro): orientativa. Garmin también usa movimiento y respiración.</div>
+  </div>
+  <div class="card c12">
+    <h2>Últimas noches</h2>
+    <div class="scroll"><table><thead><tr><th>Noche</th><th>Punt.</th><th>Dormido</th><th>Efic.</th><th>Latencia</th><th>Despert.</th><th>Prof.</th><th>REM</th><th>FC rep.</th><th>HRV</th><th>Estrés</th></tr></thead><tbody id="tSleep"></tbody></table></div>
+  </div>
+</section>
 
-  <section class="card c4">
-    <h2>Carga de hoy</h2>
-    <div><span class="big" id="trimpDay">0</span><span class="unit">TRIMP</span></div>
-    <div class="row" style="margin-top:12px">
-      <div class="kv"><b id="ctl">--</b><span>Fitness (CTL 42d)</span></div>
-      <div class="kv"><b id="atl">--</b><span>Fatiga (ATL 7d)</span></div>
-      <div class="kv"><b id="tsb">--</b><span>Forma (CTL−ATL)</span></div>
+<!-- =================== HISTORIAL =================== -->
+<section class="tab" id="t-hist" hidden>
+  <div class="card c12">
+    <div class="row" style="align-items:center">
+      <h2 style="margin:0">Tendencia</h2>
+      <select id="hMetric">
+        <option value="sleep">Sueño</option><option value="rec">Recuperación</option><option value="stress">Estrés</option>
+        <option value="effort">Esfuerzo</option><option value="enMax">Energía máx</option><option value="rhr">FC reposo</option>
+        <option value="hrv">HRV nocturna</option><option value="trimp">TRIMP</option><option value="vo2">VO2máx est.</option><option value="sleepH">Horas de sueño</option>
+      </select>
+      <select id="hRange"><option value="30">30 días</option><option value="90">90 días</option><option value="365">1 año</option></select>
     </div>
-    <div class="zones" id="zoneBar"></div>
-    <div class="zl" id="zoneLeg"></div>
-  </section>
+    <canvas id="cTrend" height="220" style="margin-top:10px"></canvas>
+  </div>
+  <div class="card c12">
+    <h2>Histórico día a día (pulsa un día para verlo)</h2>
+    <div class="scroll"><table><thead><tr><th>Día</th><th>Sueño</th><th>Recup.</th><th>Estrés</th><th>Esfuerzo</th><th>Energía</th><th>FC rep.</th><th>HRV</th><th>TRIMP</th><th>Registro</th></tr></thead><tbody id="tDays"></tbody></table></div>
+  </div>
+</section>
 
-  <section class="card c8">
-    <h2>FC — últimos 15 min</h2>
-    <canvas id="cLive" height="190"></canvas>
-  </section>
-
-  <section class="card c4">
-    <h2>Disposición (HRV matinal)</h2>
-    <div id="readyBox"><span class="note">Sin mediciones aún.</span></div>
-    <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button class="pri" id="bMorning" disabled>Medir HRV matinal</button>
-      <span id="mCount" class="note"></span>
-    </div>
-    <div class="note" style="margin-top:8px">Al despertar, tumbado y quieto. Se descartan los primeros 30 s.</div>
-  </section>
-
-  <section class="card c6">
-    <h2>ln RMSSD matinal y línea base (media 7 días ± 0,5 DE)</h2>
-    <canvas id="cHrv" height="200"></canvas>
-  </section>
-
-  <section class="card c6">
-    <h2>Carga diaria (TRIMP) · CTL · ATL</h2>
-    <canvas id="cLoad" height="200"></canvas>
-  </section>
-
-  <section class="card c6">
+<!-- =================== ENTRENO =================== -->
+<section class="tab" id="t-entreno" hidden>
+  <div class="card c6">
     <h2>Sesión de entrenamiento</h2>
     <div class="row">
-      <button class="pri" id="bSess" disabled>Iniciar sesión</button>
+      <button class="pri" id="bSess">Iniciar sesión</button>
       <div class="kv"><b id="sDur">0:00</b><span>Duración</span></div>
       <div class="kv"><b id="sTrimp">0</b><span>TRIMP</span></div>
       <div class="kv"><b id="sAvg">--</b><span>FC media</span></div>
       <div class="kv"><b id="sMax">--</b><span>FC máx</span></div>
     </div>
-    <div class="scroll" style="margin-top:10px">
-      <table><thead><tr><th>Fecha</th><th>Dur.</th><th>FC med</th><th>FC máx</th><th>TRIMP</th><th>Edwards</th></tr></thead><tbody id="tSess"></tbody></table>
-    </div>
-  </section>
+    <div class="scroll" style="margin-top:10px;max-height:240px"><table><thead><tr><th>Fecha</th><th>Dur.</th><th>FC med</th><th>FC máx</th><th>TRIMP</th><th>Edwards</th></tr></thead><tbody id="tSess"></tbody></table></div>
+  </div>
+  <div class="card c6">
+    <h2>HRV matinal (test 2–5 min tumbado)</h2>
+    <div class="row"><button id="bMorning">Medir ahora</button><span class="note" id="mCount"></span></div>
+    <div class="scroll" style="margin-top:10px;max-height:240px"><table><thead><tr><th>Fecha</th><th>RMSSD</th><th>ln</th><th>FC rep.</th><th>Latidos</th><th></th></tr></thead><tbody id="tMorn"></tbody></table></div>
+  </div>
+  <div class="card c12">
+    <h2>Carga · TRIMP diario · Fitness (CTL 42 d) · Fatiga (ATL 7 d) · Forma (TSB)</h2>
+    <div class="row" id="loadKv"></div>
+    <canvas id="cLoad" height="210" style="margin-top:8px"></canvas>
+  </div>
+</section>
 
-  <section class="card c6">
-    <h2>Mediciones matinales</h2>
-    <div class="scroll">
-      <table><thead><tr><th>Fecha</th><th>RMSSD</th><th>ln</th><th>FC reposo</th><th>Latidos</th><th>Artef.</th><th></th></tr></thead><tbody id="tMorn"></tbody></table>
-    </div>
-  </section>
-
-  <section class="card c12">
-    <h2>Ajustes y datos</h2>
+<!-- =================== AJUSTES =================== -->
+<section class="tab" id="t-ajustes" hidden>
+  <div class="card c6">
+    <h2>Perfil</h2>
     <div class="row" style="align-items:flex-end">
-      <label>FC máx<input type="number" id="sHrmax" min="120" max="230"></label>
-      <label>FC reposo<input type="number" id="sHrrest" min="30" max="100"></label>
-      <label>Sexo (TRIMP)<select id="sSex"><option value="m">Hombre</option><option value="f">Mujer</option></select></label>
-      <label>Medición matinal<select id="sMorn"><option value="2">2 min</option><option value="3">3 min</option><option value="5">5 min</option></select></label>
-      <span style="flex:1"></span>
-      <button id="bExp">Exportar JSON</button>
-      <button id="bCsv">Exportar CSV</button>
-      <button id="bImp">Importar JSON</button>
+      <label>Año nacimiento<input type="number" id="pBirth" min="1930" max="2015"></label>
+      <label>Sexo<select id="pSex"><option value="m">Hombre</option><option value="f">Mujer</option></select></label>
+      <label>FC máx (vacío = auto)<input type="number" id="pHrmax" min="120" max="230"></label>
+      <label>FC reposo (vacío = auto)<input type="number" id="pHrrest" min="30" max="100"></label>
+      <label>Objetivo sueño (h)<input type="number" id="pGoal" min="5" max="10" step="0.5"></label>
+      <label>Test matinal<select id="pMorn"><option value="2">2 min</option><option value="3">3 min</option><option value="5">5 min</option></select></label>
+    </div>
+    <div class="note" id="pDerived" style="margin-top:10px"></div>
+  </div>
+  <div class="card c6">
+    <h2>Registro continuo</h2>
+    <div class="note">
+      La app registra mientras esta página esté abierta y la pulsera a menos de ~10 m. Para registrar 24 h:<br>
+      · <b>PC (Edge)</b>: deja la pestaña abierta (puede estar en segundo plano). En edge://settings/system desactiva "Pestañas en suspensión" o añade esta web a "Nunca suspender estos sitios". Configura el PC para no entrar en suspensión.<br>
+      · <b>iPhone (Bluefy)</b>: iOS para la web al bloquear la pantalla o cambiar de app. Pulsa "Pantalla: encendida", deja el móvil cargando y Bluefy en primer plano.<br>
+      · La pulsera solo admite una conexión: PC <i>o</i> iPhone.<br>
+      · Si se corta, la app reconecta sola.
+    </div>
+  </div>
+  <div class="card c6">
+    <h2>Datos</h2>
+    <div class="row">
+      <button id="bExp">Exportar todo (JSON)</button><button id="bCsv">Exportar días (CSV)</button><button id="bImp">Importar JSON</button>
       <input type="file" id="fImp" accept=".json" style="display:none">
+      <button id="bRecalc">Recalcular histórico</button><button id="bWipe" style="border-color:var(--bad)">Borrar todo</button>
     </div>
-    <div class="note" style="margin-top:10px">
-      Datos guardados solo en este navegador. Métodos: RMSSD sobre intervalos RR filtrados (300–2000 ms, Δ≤20 % respecto al anterior);
-      línea base y valor diario de ln RMSSD según Plews et al. (2012–2013); TRIMP de Banister (k=0,64·e^{1,92·ΔFC} hombre, 0,86·e^{1,67·ΔFC} mujer) y de Edwards (zonas 50–100 % FCmáx);
-      CTL/ATL como medias exponenciales de 42 y 7 días.
-    </div>
-  </section>
+    <div class="note" id="dbInfo" style="margin-top:8px"></div>
+    <div class="note" style="margin-top:6px">Los datos se guardan solo en este navegador (PC y iPhone por separado). Para pasar datos de uno a otro: Exportar en uno → Importar en el otro (se fusionan).</div>
+  </div>
+  <div class="card c6">
+    <h2>Probar</h2>
+    <div class="note">Abre <a href="?demo=1" style="color:var(--acc)">la versión demo</a> (datos simulados de 30 días, separados de tus datos reales).</div>
+    <div class="row" style="margin-top:8px"><button id="bSim">Simular pulsera en directo</button></div>
+  </div>
+  <div class="card c12 method">
+    <h2>Métodos y fuentes</h2>
+    <details><summary>Cómo se calcula cada indicador</summary>
+    <p><b>Datos de base.</b> FC e intervalos RR del perfil Bluetooth estándar de FC (0x2A37). Se agregan por minuto: FC media/mín/máx y suma de diferencias RR sucesivas al cuadrado. RR filtrados: 300–2000 ms y Δ ≤ 20 % respecto al anterior.</p>
+    <p><b>FC máx automática</b> = 211 − 0,64·edad (Nes et al., HUNT, Scand J Med Sci Sports 2013). <b>FC reposo automática</b> = mediana de las FC mínimas nocturnas (media móvil 10 min) de las últimas 7 noches.</p>
+    <p><b>Actividad.</b> Minuto activo si FC ≥ FCrep + 30 % de la reserva de FC. Solo los minutos activos suman carga.</p>
+    <p><b>Estrés (0–100)</b>, solo en minutos sin actividad, como Garmin/Firstbeat (HRV en reposo, bandas 0–25 reposo, 26–50 bajo, 51–75 medio, 76–100 alto). Fórmula propia: 70 % HRV (RMSSD de 3 min frente a tu RMSSD nocturno de referencia; 100 % de la referencia → 0, 15 % → 100) + 30 % elevación de FC sobre reposo (40 % de la reserva → 100). Sin RR: solo FC.</p>
+    <p><b>Esfuerzo (0–100)</b>: TRIMP de Banister diario (k = 0,64·e^{1,92·x} hombre; 0,86·e^{1,67·x} mujer) en escala logarítmica: 100·ln(1+TRIMP)/ln(1+400). 400 TRIMP ≈ día muy duro (p. ej. 5 h de bici a ritmo medio-alto).</p>
+    <p><b>Sueño (0–100)</b>, estructura tipo Garmin (duración + calidad + recuperación nocturna por HRV): 35 % duración (0 a 4 h, 100 al objetivo; NSF recomienda 7–9 h), 35 % calidad (eficiencia 65→92 %, % profundo estimado, despertares), 30 % recuperación (estrés medio durante el sueño). Despierto = FC > base nocturna + 12 ppm o rango intraminuto > 25 ppm. Fases estimadas: profundo = FC en el 20 % más bajo de la noche y además FC estable (variación intraminuto ≤ mediana) o HRV ≥ mediana nocturna; REM = FC en el 30 % más alto con variación intraminuto ≥ mediana; resto ligero.</p>
+    <p><b>Recuperación (0–100)</b>, como Suunto (HRV 7 días vs referencia 60 días, sueño, TSB) y Garmin Training Readiness: 40 % HRV de la noche vs tu media/DE de 60 noches (z = 0 → 70, +1 → 100, −1 → 40), 25 % sueño, 15 % FC reposo vs referencia, 20 % forma (TSB = CTL − ATL; 0 → 70, −15 → 40).</p>
+    <p><b>Energía (0–100)</b>, concepto tipo Body Battery/Resources: sube durante el sueño y el reposo con estrés &lt; 26, baja con estrés y actividad (proporcional al TRIMP). Los huecos sin registro no la cambian.</p>
+    <p><b>VO2máx estimado</b> = 15,3 · FCmáx / FCrep (Uth et al., Eur J Appl Physiol 2004; error típico ±10 %). <b>Edad fitness</b> = edad a la que el VO2máx medio de la población (HUNT3: 54,4 ml/kg/min hombres y 43,0 mujeres a los 20–29 años, ≈ −7 % por década) iguala tu VO2máx.</p>
+    <p><b>Carga</b>: CTL/ATL = medias exponenciales de 42 y 7 días del TRIMP diario; TSB = CTL − ATL.</p>
+    <p class="note">Indicadores de bienestar y entrenamiento, no médicos. Algoritmos propios, documentados y abiertos: no son los de Whoop, Garmin ni Suunto.</p>
+    </details>
+  </div>
+</section>
 </main>
+
+<nav>
+  <button data-t="hoy" class="on">Hoy</button><button data-t="sueno">Sueño</button><button data-t="hist">Historial</button><button data-t="entreno">Entreno</button><button data-t="ajustes">Ajustes</button>
+</nav>
 
 <script>
 "use strict";
-/* ---------- persistencia ---------- */
-const KEY = "pulso.v1";
-const DEF = {settings:{hrmax:190,hrrest:50,sex:"m",morningMin:3}, morning:[], days:{}, sessions:[]};
-function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && s.settings) return Object.assign(structuredClone(DEF), s); }catch(e){} return structuredClone(DEF); }
-let S = load();
-let saveT = 0;
-function save(force){ const now = Date.now(); if(!force && now - saveT < 5000) return; saveT = now; try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ setMsg("No se pudo guardar en el navegador: " + e.message); } }
-window.addEventListener("beforeunload", ()=>save(true));
-
-/* ---------- utilidades ---------- */
+/* =====================================================================
+   CONFIG / ALMACENAMIENTO
+   ===================================================================== */
+const DEMO = new URLSearchParams(location.search).has("demo");
+const LSK = DEMO ? "pulso.demo" : "pulso.v2";
+const DBN = DEMO ? "pulso-demo" : "pulso";
 const $ = id => document.getElementById(id);
-const todayKey = (t=Date.now()) => { const d = new Date(t); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
-const fmtDur = s => { s=Math.round(s); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60; return (h? h+":"+String(m).padStart(2,"0") : m)+":"+String(x).padStart(2,"0"); };
-const mean = a => a.reduce((x,y)=>x+y,0)/a.length;
-const sd = a => { const m=mean(a); return Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/(a.length-1||1)); };
-function setMsg(t){ $("rrMsg").textContent = t||""; }
-const ZCOL = ["#3a4150","#4f8cc9","#3fb6a8","#c9b84f","#e0a03a","#e0605a"];
-const ZNAME = ["<50%","Z1","Z2","Z3","Z4","Z5"];
+const DEF = {settings:{birth:null, sex:"m", hrmax:null, hrrest:null, goal:8, morningMin:3},
+             days:{}, sleeps:{}, morning:[], sessions:[], base:{}, energy:{v:60, t:0}, night:null};
+function loadLS(){ try{ const s = JSON.parse(localStorage.getItem(LSK)); if(s && s.settings) return Object.assign(structuredClone(DEF), s); }catch(e){} return structuredClone(DEF); }
+let S = loadLS();
+function save(){ try{ localStorage.setItem(LSK, JSON.stringify(S)); }catch(e){ msg("No se pudo guardar: "+e.message); } }
+function msg(t){ $("msg").textContent = t||""; }
 
-/* ---------- parser estándar Heart Rate Measurement (0x2A37) ---------- */
-function parseHRM(dv){
-  const flags = dv.getUint8(0);
-  let o = 1, hr;
-  if(flags & 0x01){ hr = dv.getUint16(o, true); o += 2; } else { hr = dv.getUint8(o); o += 1; }
-  if(flags & 0x08) o += 2;                       // energía gastada
-  const rr = [];
-  if(flags & 0x10){ while(o + 1 < dv.byteLength){ rr.push(dv.getUint16(o, true) * 1000 / 1024); o += 2; } }
-  return {hr, rr, contact: (flags & 0x06) === 0x04 ? false : true};
+// migración desde v1
+if(!DEMO && !localStorage.getItem(LSK)){
+  try{ const o = JSON.parse(localStorage.getItem("pulso.v1")); if(o){
+    S.morning = o.morning||[]; S.sessions = o.sessions||[];
+    if(o.settings){ S.settings.sex = o.settings.sex||"m"; S.settings.morningMin = o.settings.morningMin||3;
+      if(o.settings.hrmax && o.settings.hrmax!==190) S.settings.hrmax = o.settings.hrmax;
+      if(o.settings.hrrest && o.settings.hrrest!==50) S.settings.hrrest = o.settings.hrrest; }
+    for(const [k,d] of Object.entries(o.days||{})) S.days[k] = {legacy:true, trimp:d.trimp||0};
+    save(); } }catch(e){}
 }
 
-/* ---------- fisiología ---------- */
-function zoneOf(hr){ const p = hr / S.settings.hrmax; if(p<0.5) return 0; if(p<0.6) return 1; if(p<0.7) return 2; if(p<0.8) return 3; if(p<0.9) return 4; return 5; }
-function banisterRate(hr){ // TRIMP por minuto
-  const {hrmax, hrrest, sex} = S.settings;
-  const r = Math.max(0, Math.min(1, (hr - hrrest) / (hrmax - hrrest)));
-  return sex === "f" ? r * 0.86 * Math.exp(1.67 * r) : r * 0.64 * Math.exp(1.92 * r);
+let DB;
+function idbOpen(){ return new Promise((res,rej)=>{ const r = indexedDB.open(DBN,1);
+  r.onupgradeneeded = ()=>{ const s = r.result.createObjectStore("min",{keyPath:"k"}); };
+  r.onsuccess = ()=>res(r.result); r.onerror = ()=>rej(r.error); }); }
+function idbPut(recs){ return new Promise((res,rej)=>{ const tx = DB.transaction("min","readwrite"), st = tx.objectStore("min"); recs.forEach(r=>st.put(r)); tx.oncomplete = res; tx.onerror = ()=>rej(tx.error); }); }
+function idbRange(a,b){ return new Promise((res,rej)=>{ const q = DB.transaction("min").objectStore("min").getAll(IDBKeyRange.bound(a,b)); q.onsuccess = ()=>res(q.result); q.onerror = ()=>rej(q.error); }); }
+function idbAll(){ return new Promise((res,rej)=>{ const q = DB.transaction("min").objectStore("min").getAll(); q.onsuccess = ()=>res(q.result); q.onerror = ()=>rej(q.error); }); }
+function idbCount(){ return new Promise(res=>{ const q = DB.transaction("min").objectStore("min").count(); q.onsuccess = ()=>res(q.result); q.onerror = ()=>res(0); }); }
+function idbClear(){ return new Promise(res=>{ const tx = DB.transaction("min","readwrite"); tx.objectStore("min").clear(); tx.oncomplete = res; }); }
+const dayMins = d => idbRange(d+"T00:00", d+"T23:59");
+
+/* =====================================================================
+   UTILIDADES
+   ===================================================================== */
+const pad = n => String(n).padStart(2,"0");
+const dKey = t => { const d = new Date(t); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); };
+const mKey = t => { const d = new Date(t); return dKey(t)+"T"+pad(d.getHours())+":"+pad(d.getMinutes()); };
+const addDays = (k,n) => { const d = new Date(k+"T12:00"); d.setDate(d.getDate()+n); return dKey(+d); };
+const today = () => dKey(Date.now());
+const clamp = (v,a=0,b=100) => Math.max(a, Math.min(b, v));
+const mean = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : NaN;
+const sd = a => { const m = mean(a); return Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/Math.max(1,a.length-1)); };
+const median = a => { if(!a.length) return NaN; const s = [...a].sort((x,y)=>x-y), h = s.length>>1; return s.length%2 ? s[h] : (s[h-1]+s[h])/2; };
+const pct = (a,p) => { if(!a.length) return NaN; const s = [...a].sort((x,y)=>x-y); return s[Math.min(s.length-1, Math.floor(p*s.length))]; };
+const fmtDur = s => { s = Math.round(s); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60; return (h? h+":"+pad(m) : m)+":"+pad(x); };
+const fmtHM = min => { min = Math.round(min); return Math.floor(min/60)+"h"+pad(min%60); };
+const fmtDate = k => new Date(k+"T12:00").toLocaleDateString("es-ES",{weekday:"short", day:"numeric", month:"short"});
+const nz = (v,d=0) => (v===null||v===undefined||Number.isNaN(v)) ? "--" : (+v).toFixed(d);
+
+/* =====================================================================
+   FISIOLOGÍA
+   ===================================================================== */
+function age(){ return S.settings.birth ? new Date().getFullYear() - S.settings.birth : null; }
+function HRMAX(){ return S.settings.hrmax || (age() ? Math.round(211 - 0.64*age()) : 190); }
+function HRREST(){ return S.settings.hrrest || S.base.rhr || 55; }
+function RMREF(){ return S.base.rm || (S.morning.length ? median(S.morning.slice(-14).map(m=>m.rmssd)) : 45); }
+function banister(hr){ const r = clamp((hr - HRREST())/(HRMAX()-HRREST()),0,1); return S.settings.sex==="f" ? r*0.86*Math.exp(1.67*r) : r*0.64*Math.exp(1.92*r); }
+function zoneOf(hr){ const p = hr/HRMAX(); return p<0.5?0 : p<0.6?1 : p<0.7?2 : p<0.8?3 : p<0.9?4 : 5; }
+function isAct(hr){ return hr >= HRREST() + 0.30*(HRMAX()-HRREST()); }
+function stressOf(hr, rm3){
+  const sHr = 100*clamp((hr - HRREST())/(0.40*(HRMAX()-HRREST())),0,1);
+  if(rm3 == null) return Math.round(sHr);
+  const r = rm3 / RMREF(), sHrv = 100*clamp((1 - r)/0.85, 0, 1);
+  return Math.round(0.7*sHrv + 0.3*sHr);
 }
-function cleanRR(list){ // devuelve {clean, rejected}
-  const out = []; let rej = 0, prev = null;
-  for(const v of list){
-    if(v < 300 || v > 2000 || (prev !== null && Math.abs(v - prev) / prev > 0.2)){ rej++; prev = (v>=300&&v<=2000)? v : prev; continue; }
-    out.push(v); prev = v;
+const stBand = s => s==null ? -1 : s<=25 ? 0 : s<=50 ? 1 : s<=75 ? 2 : 3;
+const ST_COL = ["#58c27d","#c9b84f","#e0a03a","#e0605a"], ST_NAME = ["Reposo","Bajo","Medio","Alto"];
+const Z_COL = ["#3a4150","#4f8cc9","#3fb6a8","#c9b84f","#e0a03a","#e0605a"], Z_NAME = ["<50%","Z1","Z2","Z3","Z4","Z5"];
+function cleanRR(list, prev=null){ const out = []; let rej = 0;
+  for(const v of list){ if(v<300 || v>2000 || (prev!==null && Math.abs(v-prev)/prev > 0.2)){ rej++; if(v>=300&&v<=2000) prev = v; continue; } out.push(v); prev = v; }
+  return {clean:out, rej, last:prev}; }
+function rmssd(rr){ if(rr.length<3) return null; let s=0; for(let i=1;i<rr.length;i++) s += (rr[i]-rr[i-1])**2; return Math.sqrt(s/(rr.length-1)); }
+function vo2(){ const hr = HRREST(); if(!hr) return null; return 15.3*HRMAX()/hr; }
+function fitnessAge(v){ if(!v) return null; const base = S.settings.sex==="f" ? 43.0 : 54.4; return clamp(25 + 10*Math.log(v/base)/Math.log(0.93), 20, 95); }
+function effortOf(tr){ return Math.round(clamp(100*Math.log(1+tr)/Math.log(401))); }
+
+/* =====================================================================
+   PROCESADO POR MINUTO (vivo, demo y recálculo usan lo mismo)
+   ===================================================================== */
+let rm3buf = [];   // últimos minutos {t, ssd, nd}
+function processMinute(m, nightFlag){
+  // m: {k,t,hr,hrMin,hrMax,ssd,nd,n}
+  rm3buf.push({t:m.t, ssd:m.ssd, nd:m.nd}); rm3buf = rm3buf.filter(x=>x.t > m.t - 3*60e3 + 1);
+  const ssd = rm3buf.reduce((a,b)=>a+b.ssd,0), nd = rm3buf.reduce((a,b)=>a+b.nd,0);
+  m.rm = m.nd >= 10 ? +Math.sqrt(m.ssd/m.nd).toFixed(1) : null;
+  const rm3 = nd >= 30 ? Math.sqrt(ssd/nd) : null;
+  m.act = isAct(m.hr) ? 1 : 0;
+  m.st = m.act ? null : stressOf(m.hr, rm3);
+  m.tr = m.act ? +banister(m.hr).toFixed(3) : 0;
+  m.z = zoneOf(m.hr);
+  const h = new Date(m.t).getHours();
+  m.ng = (nightFlag || ((h>=22||h<10) && !m.act && m.hr <= HRREST()+10)) ? 1 : 0;
+  // energía
+  let e = (S.energy && S.energy.v!=null) ? S.energy.v : 60;
+  if(m.act) e -= 0.05 + m.tr*0.35;
+  else if(m.ng && (m.st==null || m.st<=50)) e += 0.13*(1 - (m.st||0)/60);
+  else if(m.st!=null && m.st<=25) e += 0.03*(1 - m.st/25);
+  else if(m.st!=null) e -= 0.02 + (m.st-25)/75*0.12;
+  else e -= 0.04;
+  m.en = +clamp(e).toFixed(2);
+  S.energy = {v:m.en, t:m.t};
+  return m;
+}
+
+/* agregador en vivo */
+let cur = null, lastRR = null, liveRR = [], todayCache = {d:null, mins:[]}, lastHR = null, lastT = 0, gotRR = false;
+async function onSample(hr, rrs, t){
+  if(!hr || hr<25 || hr>240) return;
+  lastHR = hr; lastT = t;
+  const k = mKey(t);
+  if(cur && cur.k !== k) await flushMinute();
+  if(!cur) cur = {k, t: Math.floor(t/60e3)*60e3, hrs:[], ssd:0, nd:0, n:0};
+  cur.hrs.push(hr);
+  if(rrs.length){ gotRR = true; const c = cleanRR(rrs, lastRR); lastRR = c.last;
+    for(const r of c.clean){ if(cur._p!=null){ cur.ssd += (r-cur._p)**2; cur.nd++; } cur._p = r; cur.n++; liveRR.push({t, r}); }
+    if(morning) morning.rr.push(...rrs.map(r=>({t,r}))); }
+  liveRR = liveRR.filter(x=>x.t > t-60e3);
+  if(morning) morning.hr.push({t,hr});
+  if(session){ const dt = session.lt ? Math.min((t-session.lt)/1000,5) : 1; session.lt = t; session.sec += dt; session.hrSum += hr*dt; session.max = Math.max(session.max,hr); session.trimp += banister(hr)*dt/60; session.edw += zoneOf(hr)*dt/60; }
+}
+async function flushMinute(){
+  const c = cur; cur = null; if(!c || c.hrs.length < 5) return;
+  const m = {k:c.k, t:c.t, hr:Math.round(mean(c.hrs)), hrMin:Math.min(...c.hrs), hrMax:Math.max(...c.hrs), ssd:Math.round(c.ssd), nd:c.nd, n:c.n};
+  processMinute(m, !!S.night);
+  try{ await idbPut([m]); }catch(e){ msg("Error guardando minuto: "+e.message); }
+  const d = m.k.slice(0,10);
+  if(todayCache.d !== d) todayCache = {d, mins:[]};
+  todayCache.mins.push(m);
+  save();
+  if(Date.now() - lastSummary > 60e3){ lastSummary = Date.now(); await summarizeDay(d, todayCache.mins); if(viewDay===d) renderHoy(); }
+}
+let lastSummary = 0;
+
+/* =====================================================================
+   RESÚMENES DIARIOS
+   ===================================================================== */
+async function summarizeDay(d, mins){
+  mins = mins || await dayMins(d);
+  const prev = S.days[d] || {};
+  if(!mins.length){ return prev; }
+  const sl = S.sleeps[d];
+  const inSleep = m => sl && m.t >= sl.on && m.t <= sl.off;
+  const awakeRest = mins.filter(m=>!m.act && m.st!=null && !inSleep(m));
+  const bands = [0,0,0,0,0]; // reposo,bajo,medio,alto,actividad
+  mins.forEach(m=>{ if(inSleep(m)) return; if(m.act) bands[4]++; else if(m.st!=null) bands[stBand(m.st)]++; });
+  const zones = [0,0,0,0,0,0]; mins.forEach(m=>{ if(m.act) zones[m.z]++; });
+  const tr = mins.reduce((a,m)=>a+m.tr,0);
+  const ens = mins.map(m=>m.en);
+  const s = {
+    cov: mins.length, hrAvg: Math.round(mean(mins.map(m=>m.hr))), hrMax: Math.max(...mins.map(m=>m.hrMax)),
+    stress: awakeRest.length >= 10 ? Math.round(mean(awakeRest.map(m=>m.st))) : null, bands,
+    actMin: mins.filter(m=>m.act).length, zones, trimp: +tr.toFixed(1), effort: effortOf(tr),
+    enMin: Math.round(Math.min(...ens)), enMax: Math.round(Math.max(...ens)), enEnd: Math.round(ens[ens.length-1]),
+    sleep: sl ? sl.score : null, sleepH: sl ? +(sl.tst/60).toFixed(2) : null, rhr: sl ? sl.rhr : null, hrv: sl ? sl.hrv : null,
+  };
+  if(prev.trimp && prev.legacy && !mins.length) s.trimp = prev.trimp;
+  s.vo2 = HRREST() ? +(15.3*HRMAX()/(s.rhr||HRREST())).toFixed(1) : null;
+  s.rec = recoveryFor(d, sl);
+  S.days[d] = s; save();
+  return s;
+}
+function loadSeries(endKey, n){
+  const keys = Object.keys(S.days).sort(); if(!keys.length) return [];
+  const out = []; let ctl = 0, atl = 0, k = keys[0], guard = 0;
+  while(k <= endKey && guard++ < 3000){ const tr = (S.days[k] && S.days[k].trimp) || 0; ctl += (tr-ctl)/42; atl += (tr-atl)/7; out.push({k, tr, ctl, atl, tsb:ctl-atl}); k = addDays(k,1); }
+  return out.slice(-n);
+}
+function recoveryFor(d, sl){
+  const parts = [];
+  const nights = Object.entries(S.sleeps).filter(([k,v])=>k < d && k >= addDays(d,-60) && v.hrv).map(([k,v])=>Math.log(v.hrv));
+  if(sl && sl.hrv && nights.length >= 4){ const z = (Math.log(sl.hrv) - mean(nights))/(sd(nights)||0.1); parts.push([0.40, clamp(70 + 30*z)]); }
+  else if(sl && sl.hrv){ parts.push([0.40, clamp(70*sl.hrv/RMREF())]); }
+  if(sl) parts.push([0.25, sl.score]);
+  const rhrs = Object.entries(S.sleeps).filter(([k,v])=>k < d && k >= addDays(d,-30) && v.rhr).map(([k,v])=>v.rhr);
+  if(sl && sl.rhr && rhrs.length >= 3){ const dl = sl.rhr - mean(rhrs); parts.push([0.15, clamp(80 - 8*dl)]); }
+  const L = loadSeries(addDays(d,-1), 1)[0]; if(L && L.ctl > 5) parts.push([0.20, clamp(70 + 2*L.tsb)]);
+  if(!parts.length) return null;
+  const w = parts.reduce((a,p)=>a+p[0],0); return Math.round(parts.reduce((a,p)=>a+p[0]*p[1],0)/w);
+}
+
+/* =====================================================================
+   SUEÑO
+   ===================================================================== */
+async function analyzeSleep(t0, t1){
+  const mins = (await idbRange(mKey(t0), mKey(t1))).filter(m=>m.t>=t0 && m.t<=t1);
+  if(mins.length < 120) return null;
+  const base = pct(mins.map(m=>m.hr), 0.15);
+  const aw = mins.map(m => (m.hr > base + 12 || (m.hrMax - m.hrMin) > 25 || m.act) ? 1 : 0);
+  let on = -1; for(let i=0;i+10<=aw.length;i++){ if(aw.slice(i,i+10).filter(x=>!x).length >= 8){ on = i; break; } }
+  if(on < 0) return null;
+  let off = aw.length-1; while(off > on && aw[off]) off--;
+  const span = mins.slice(on, off+1), sAw = aw.slice(on, off+1);
+  const asleep = span.filter((m,i)=>!sAw[i]);
+  if(asleep.length < 90) return null;
+  let awak = 0, run = 0; sAw.forEach(a=>{ if(a) run++; else { if(run>=3) awak++; run = 0; } });
+  const rmMed = median(asleep.filter(m=>m.rm).map(m=>m.rm));
+  const aHr = asleep.map(m=>m.hr), p30 = pct(aHr,0.20), p70 = pct(aHr,0.70), rgMed = median(asleep.map(m=>m.hrMax-m.hrMin));
+  const stage = span.map((m,i)=>{ if(sAw[i]) return 3; if(m.hr <= p30 && ((m.hrMax-m.hrMin) <= rgMed || (m.rm!=null && !isNaN(rmMed) && m.rm >= rmMed))) return 0; if(m.hr >= p70 && (m.hrMax-m.hrMin) >= rgMed) return 2; return 1; });
+  const cnt = s => stage.filter(x=>x===s).length;
+  const tib = (mins[mins.length-1].t - mins[0].t)/60e3 + 1;
+  const tst = asleep.length, eff = tst / tib;
+  const roll = []; for(let i=0;i+10<=asleep.length;i++) roll.push(mean(asleep.slice(i,i+10).map(m=>m.hr)));
+  const rhr = Math.round(roll.length ? Math.min(...roll) : Math.min(...asleep.map(m=>m.hr)));
+  const ssd = asleep.reduce((a,m)=>a+m.ssd,0), nd = asleep.reduce((a,m)=>a+m.nd,0);
+  const hrv = nd > 200 ? +Math.sqrt(ssd/nd).toFixed(1) : null;
+  const sts = asleep.filter(m=>m.st!=null).map(m=>m.st), stM = sts.length ? Math.round(mean(sts)) : null;
+  const goal = (S.settings.goal||8)*60;
+  const deepPct = cnt(0)/tst;
+  const sDur = 100*clamp((tst-240)/(goal-240),0,1);
+  const sQual = 0.6*100*clamp((eff-0.65)/(0.92-0.65),0,1) + 0.2*100*clamp(deepPct/0.18,0,1) + 0.2*Math.max(0,100-awak*12);
+  const sRec = stM==null ? 70 : clamp(100 - stM*1.6);
+  const score = Math.round(0.35*sDur + 0.35*sQual + 0.30*sRec);
+  return {start:mins[0].t, end:mins[mins.length-1].t, on:span[0].t, off:span[span.length-1].t, tib:Math.round(tib), tst, eff:+eff.toFixed(3),
+    lat: Math.round((span[0].t - mins[0].t)/60e3), awak, waso: sAw.filter(x=>x).length, deep:cnt(0), light:cnt(1), rem:cnt(2),
+    rhr, hrv, stress:stM, score, parts:{dur:Math.round(sDur), qual:Math.round(sQual), rec:Math.round(sRec)}, cov: mins.length/tib,
+    hyp: stage.map((s,i)=>[span[i].t, s])};
+}
+async function detectSleep(d){
+  const mins = (await idbRange(addDays(d,-1)+"T18:00", d+"T14:00"));
+  if(mins.length < 180) return null;
+  const thr = pct(mins.map(m=>m.hr), 0.10) + 12;
+  let best = null, s = null, lastOk = null;
+  for(const m of mins){
+    const ok = !m.act && m.hr <= thr;
+    if(ok){ if(s===null || m.t - lastOk > 20*60e3){ s = m.t; } lastOk = m.t; if(!best || lastOk - s > best[1]-best[0]) best = [s, lastOk]; }
   }
-  return {clean: out, rejected: rej};
+  if(!best || best[1]-best[0] < 3*3600e3) return null;
+  return [best[0] - 20*60e3, best[1] + 10*60e3];
 }
-function rmssd(rr){ if(rr.length < 3) return null; let s = 0; for(let i=1;i<rr.length;i++) s += (rr[i]-rr[i-1])**2; return Math.sqrt(s/(rr.length-1)); }
+async function storeSleep(sl){
+  if(!sl) return false;
+  const d = dKey(sl.end); S.sleeps[d] = sl;
+  const last7 = Object.keys(S.sleeps).sort().slice(-7).map(k=>S.sleeps[k].rhr).filter(Boolean);
+  if(last7.length) S.base.rhr = Math.round(median(last7));
+  const l14 = Object.keys(S.sleeps).sort().slice(-14).map(k=>S.sleeps[k].hrv).filter(Boolean);
+  if(l14.length) S.base.rm = +median(l14).toFixed(1);
+  save(); await summarizeDay(d); return true;
+}
+async function autoSleep(){
+  const d = today(); if(S.night || S.sleeps[d] || new Date().getHours() < 6) return;
+  const w = await detectSleep(d); if(!w || w[1] > Date.now() - 30*60e3) return;
+  if(await storeSleep(await analyzeSleep(w[0], w[1]))) renderAll();
+}
 
-/* ---------- estado en vivo ---------- */
-let live = [];        // {t,hr} últimos 15 min
-let rrLive = [];      // {t,rr} últimos 60 s (brutos)
-let lastT = null, lastHR = null, gotRR = false;
+/* =====================================================================
+   BLUETOOTH
+   ===================================================================== */
+function parseHRM(dv){
+  const f = dv.getUint8(0); let o = 1, hr;
+  if(f & 1){ hr = dv.getUint16(o,true); o+=2; } else { hr = dv.getUint8(o); o+=1; }
+  if(f & 8) o += 2;
+  const rr = []; if(f & 16){ while(o+1 < dv.byteLength){ rr.push(dv.getUint16(o,true)*1000/1024); o+=2; } }
+  return {hr, rr};
+}
+let device = null, userDisc = false, retries = 0, sim = null;
+function setConn(on, txt){ $("dot").classList.toggle("on", on); $("status").textContent = txt; $("bDisc").disabled = !on; $("bConnect").disabled = on; }
+async function connect(){
+  if(!navigator.bluetooth){ msg("Este navegador no tiene Bluetooth web. PC: Edge o Chrome. iPhone: Bluefy."); return; }
+  try{
+    device = await navigator.bluetooth.requestDevice({filters:[{services:["heart_rate"]},{namePrefix:"WHOOP"},{namePrefix:"Whoop"}], optionalServices:["heart_rate","battery_service"]});
+    device.addEventListener("gattserverdisconnected", onDisc); userDisc = false; retries = 0; await gattConnect();
+  }catch(e){ if(e.name !== "NotFoundError") msg("Error al conectar: "+e.message); }
+}
+async function gattConnect(){
+  setConn(false, "Conectando…");
+  const server = await device.gatt.connect();
+  let svc; try{ svc = await server.getPrimaryService("heart_rate"); }catch(e){ setConn(false,"Sin servicio FC"); msg("La pulsera no expone FC estándar: cierra la app oficial de Whoop y vuelve a intentarlo."); return; }
+  const ch = await svc.getCharacteristic("heart_rate_measurement");
+  ch.addEventListener("characteristicvaluechanged", ev=>{ const p = parseHRM(ev.target.value); onSample(p.hr, p.rr, Date.now()); });
+  await ch.startNotifications(); retries = 0; setConn(true, "Conectado · "+(device.name||"pulsera")); msg("");
+  try{ const b = await (await server.getPrimaryService("battery_service")).getCharacteristic("battery_level"); const v = await b.readValue(); $("status").textContent += " · bat "+v.getUint8(0)+"%"; }catch(e){}
+}
+function onDisc(){
+  flushMinute();
+  if(userDisc){ setConn(false,"Desconectado"); return; }
+  const wait = Math.min(60, 2**Math.min(retries,6))*1000; retries++;
+  setConn(false, "Reconectando ("+retries+")…");
+  setTimeout(()=>gattConnect().catch(()=>onDisc()), wait);   // reintenta indefinidamente
+}
+function disconnect(){ userDisc = true; if(sim){ clearInterval(sim); sim = null; $("bSim").textContent = "Simular pulsera en directo"; setConn(false,"Desconectado"); flushMinute(); return; } if(device && device.gatt.connected) device.gatt.disconnect(); else setConn(false,"Desconectado"); }
+function toggleSim(){
+  if(sim){ disconnect(); return; }
+  let ph = 0;
+  sim = setInterval(()=>{ ph += 0.01; const tg = 64 + 50*Math.max(0, Math.sin(ph)); const rrs = []; let a = 0;
+    while(a < 1000){ const r = 60000/(tg + 3*Math.sin(a/250+ph*9) + (Math.random()-0.5)*4); rrs.push(r); a += r; }
+    const hr = Math.round(60000/mean(rrs)), dv = new DataView(new ArrayBuffer(2+rrs.length*2)); dv.setUint8(0,0x16); dv.setUint8(1,hr);
+    rrs.forEach((r,i)=>dv.setUint16(2+i*2, Math.round(r*1.024), true)); const p = parseHRM(dv); onSample(p.hr, p.rr, Date.now()); }, 1000);
+  $("bSim").textContent = "Parar simulación"; userDisc = false; setConn(true, "Simulación");
+}
+
+/* wake lock */
+let wake = null, wantWake = false;
+async function setWake(on){
+  wantWake = on;
+  try{ if(on){ if(!("wakeLock" in navigator)) throw new Error("no soportado"); wake = await navigator.wakeLock.request("screen"); }
+       else if(wake){ await wake.release(); wake = null; } }
+  catch(e){ msg("No se pudo mantener la pantalla encendida ("+e.message+"). Desactiva el bloqueo automático en Ajustes del iPhone mientras registras."); wantWake = false; }
+  $("bWake").textContent = wantWake ? "Pantalla: encendida" : "Pantalla: normal";
+}
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && wantWake) setWake(true); });
+
+/* =====================================================================
+   SESIONES / TEST MATINAL / MODO NOCHE
+   ===================================================================== */
 let session = null, morning = null;
+function toggleSession(){
+  if(!session){ session = {start:Date.now(), sec:0, hrSum:0, max:0, trimp:0, edw:0}; $("bSess").textContent = "Terminar sesión"; }
+  else { if(session.sec >= 60) S.sessions.push({ts:session.start, sec:Math.round(session.sec), avg:Math.round(session.hrSum/session.sec), max:session.max, trimp:+session.trimp.toFixed(1), edwards:+session.edw.toFixed(1)});
+    session = null; save(); $("bSess").textContent = "Iniciar sesión"; renderEntreno(); }
+}
+function startMorning(){
+  if(morning) return; if(!lastT || Date.now()-lastT > 10e3){ $("mCount").textContent = "Conecta la pulsera primero."; return; }
+  const dur = S.settings.morningMin*60; morning = {start:Date.now(), rr:[], hr:[]};
+  const tk = setInterval(()=>{ const el = (Date.now()-morning.start)/1000;
+    $("mCount").textContent = el < 30 ? "Estabilizando… "+Math.ceil(30-el)+" s" : "Midiendo… "+fmtDur(dur-el);
+    if(el >= dur){ clearInterval(tk); const t0 = morning.start+30e3, raw = morning.rr.filter(x=>x.t>=t0).map(x=>x.r), c = cleanRR(raw), hrs = morning.hr.filter(x=>x.t>=t0).map(x=>x.hr); morning = null;
+      if(c.clean.length < 60){ $("mCount").textContent = "No válida: "+c.clean.length+" latidos limpios."; return; }
+      const v = rmssd(c.clean), rec = {date:today(), ts:Date.now(), rmssd:+v.toFixed(1), ln:+Math.log(v).toFixed(3), rhr:Math.round(Math.min(...hrs)), n:c.clean.length};
+      S.morning = S.morning.filter(m=>m.date!==rec.date); S.morning.push(rec); save(); $("mCount").textContent = "Guardado: "+rec.rmssd+" ms"; renderEntreno(); } }, 500);
+}
+async function toggleNight(){
+  if(!S.night){ S.night = {start:Date.now()}; save(); renderSueno(); if(!wantWake) setWake(true); return; }
+  const st = S.night.start; S.night = null; save(); await flushMinute();
+  const sl = await analyzeSleep(st, Date.now());
+  if(await storeSleep(sl)) msg(""); else msg("No hay suficientes datos registrados para analizar esa noche (mín. 2 h con la pulsera conectada).");
+  renderAll();
+}
+async function manualDetect(){
+  const d = viewDay; const w = await detectSleep(d);
+  if(!w){ msg("No se detecta un bloque de sueño ≥ 3 h registrado en la noche que termina el "+fmtDate(d)+"."); return; }
+  if(await storeSleep(await analyzeSleep(w[0], w[1]))){ msg(""); renderAll(); } else msg("Bloque detectado pero sin datos suficientes para analizarlo.");
+}
 
-function day(k){ return S.days[k] || (S.days[k] = {trimp:0, edwards:0, sec:0, zoneSec:[0,0,0,0,0,0]}); }
+/* =====================================================================
+   GRÁFICOS
+   ===================================================================== */
+function prep(c){ const r = window.devicePixelRatio||1, w = c.clientWidth; if(!c._h) c._h = c.height; const h = c._h; c.width = w*r; c.height = h*r; c.style.height = h+"px"; const x = c.getContext("2d"); x.setTransform(r,0,0,r,0,0); x.clearRect(0,0,w,h); x.font = "11px system-ui"; return {x,w,h}; }
+function grid(x,w,h,P,lo,hi,n,fmt){ x.strokeStyle="#262b36"; x.fillStyle="#8b93a3"; x.lineWidth=1; for(let i=0;i<=n;i++){ const v = lo+(hi-lo)*i/n, y = h-P.b-(h-P.t-P.b)*i/n; x.beginPath(); x.moveTo(P.l,y); x.lineTo(w-P.r,y); x.stroke(); x.fillText(fmt?fmt(v):Math.round(v), 2, y+4); } }
+function ring(val, label, sub, col, max=100, txt){
+  const v = val==null ? 0 : clamp(val,0,max)/max, R = 42, C = 2*Math.PI*R;
+  return `<div class="ring"><svg viewBox="0 0 110 110"><circle cx="55" cy="55" r="${R}" fill="none" stroke="#262b36" stroke-width="10"/>
+  <circle cx="55" cy="55" r="${R}" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C*v} ${C}" transform="rotate(-90 55 55)"/>
+  <text x="55" y="60" text-anchor="middle" fill="#e6e8ec" font-size="24" font-weight="700" font-family="system-ui">${txt ?? (val==null?"--":Math.round(val))}</text></svg>
+  <div class="lb">${label}</div><div class="sb">${sub||""}</div></div>`;
+}
+const scoreCol = v => v==null ? "#3a4150" : v>=70 ? "#58c27d" : v>=45 ? "#e0a03a" : "#e0605a";
+const stressCol = v => v==null ? "#3a4150" : ST_COL[stBand(v)];
 
-function onSample(hr, rrs, t){
-  if(!hr || hr < 25 || hr > 240) return;
-  const dt = lastT ? Math.min((t - lastT)/1000, 5) : 1;   // huecos >5 s no cuentan
-  lastT = t; lastHR = hr;
-  const z = zoneOf(hr), tr = banisterRate(hr) * dt / 60, ed = z * dt / 60;
-  const d = day(todayKey(t)); d.trimp += tr; d.edwards += ed; d.sec += dt; d.zoneSec[z] += dt;
-  if(session){ session.trimp += tr; session.edwards += ed; session.sec += dt; session.hrSum += hr*dt; session.max = Math.max(session.max, hr); }
-  live.push({t, hr}); while(live.length && live[0].t < t - 15*60e3) live.shift();
-  if(rrs.length){ gotRR = true; for(const r of rrs){ rrLive.push({t, rr:r}); if(morning) morning.rr.push({t, rr:r}); } }
-  while(rrLive.length && rrLive[0].t < t - 60e3) rrLive.shift();
-  if(morning) morning.hr.push({t, hr});
+function drawDay(mins, d){
+  const c = $("cDay"), {x,w,h} = prep(c), P = {l:30,r:30,t:8,b:30};
+  const t0 = +new Date(d+"T00:00"), t1 = t0 + 86400e3, X = t => P.l + (w-P.l-P.r)*(t-t0)/(t1-t0);
+  const hrs = mins.map(m=>m.hr), lo = Math.max(30, (hrs.length?Math.min(...hrs):50)-5), hi = Math.max(120, ...hrs)+5;
+  const Y = v => h-P.b-14-(h-P.t-P.b-14)*(v-lo)/(hi-lo);
+  grid(x,w,h-14,P,lo,hi,4);
+  x.fillStyle="#8b93a3"; for(let hh=0; hh<=24; hh+=3) x.fillText(pad(hh)+"h", X(t0+hh*3600e3)-10, h-2);
+  const sl = S.sleeps[d] || S.sleeps[addDays(d,1)];
+  [S.sleeps[d], S.sleeps[addDays(d,1)]].forEach(s=>{ if(s){ x.fillStyle="#3a4a7a55"; x.fillRect(X(Math.max(t0,s.on)), P.t, Math.max(0,X(Math.min(t1,s.off))-X(Math.max(t0,s.on))), h-P.b-14-P.t); } });
+  const bw = Math.max(1,(w-P.l-P.r)/1440);
+  mins.forEach(m=>{ x.fillStyle = m.act ? "#4f8cc9" : m.st==null ? "#3a4150" : ST_COL[stBand(m.st)]; x.fillRect(X(m.t), h-P.b-10, bw+0.5, 10); });
+  x.strokeStyle="#3fb6a8"; x.lineWidth=1.4; x.beginPath(); let pt = null;
+  mins.forEach(m=>{ const X1 = X(m.t), Y1 = Y(m.hr); if(pt && m.t-pt > 3*60e3) x.moveTo(X1,Y1); else pt ? x.lineTo(X1,Y1) : x.moveTo(X1,Y1); pt = m.t; }); x.stroke();
+  x.strokeStyle="#9b7fe0"; x.lineWidth=2; x.beginPath(); pt = null;
+  const YE = v => h-P.b-14-(h-P.t-P.b-14)*v/100;
+  mins.forEach(m=>{ const X1 = X(m.t), Y1 = YE(m.en); if(pt && m.t-pt > 3*60e3) x.moveTo(X1,Y1); else pt ? x.lineTo(X1,Y1) : x.moveTo(X1,Y1); pt = m.t; }); x.stroke();
+  x.fillStyle="#9b7fe0"; x.fillText("100", w-P.r+4, YE(100)+4); x.fillText("0", w-P.r+4, YE(0)+4);
+  if(!mins.length){ x.fillStyle="#8b93a3"; x.fillText("Sin registro este día", w/2-50, h/2); }
+}
+function drawHyp(sl){
+  const c = $("cHyp"), {x,w,h} = prep(c), P = {l:60,r:8,t:8,b:18};
+  if(!sl || !sl.hyp){ x.fillStyle="#8b93a3"; x.fillText("Sin datos", w/2-20, h/2); return; }
+  const L = ["Profundo","Ligero","REM","Despierto"], CO = ["#3d5bd6","#6f8fe8","#9b7fe0","#e0a03a"], ord = [3,2,1,0];
+  const t0 = sl.hyp[0][0], t1 = sl.hyp[sl.hyp.length-1][0]+60e3, X = t => P.l + (w-P.l-P.r)*(t-t0)/(t1-t0), lh = (h-P.t-P.b)/4;
+  ord.forEach((s,i)=>{ x.fillStyle="#8b93a3"; x.fillText(L[s], 2, P.t + lh*(3-i) + lh/2 + 4); });
+  sl.hyp.forEach(([t,s])=>{ const i = ord.indexOf(s); x.fillStyle = CO[s]; x.fillRect(X(t), P.t + lh*(3-i)+2, Math.max(1, X(t+60e3)-X(t)), lh-4); });
+  x.fillStyle="#8b93a3"; const f = t => { const d = new Date(t); return pad(d.getHours())+":"+pad(d.getMinutes()); };
+  x.fillText(f(t0), P.l, h-3); x.fillText(f(t1), w-P.r-30, h-3);
+}
+function drawTrend(){
+  const c = $("cTrend"), {x,w,h} = prep(c), P = {l:36,r:8,t:10,b:20};
+  const met = $("hMetric").value, n = +$("hRange").value;
+  const keys = []; for(let i=n-1;i>=0;i--) keys.push(addDays(today(),-i));
+  const vals = keys.map(k=>{ const d = S.days[k]; if(met==="hrv"||met==="rhr"){ const s = S.sleeps[k]; return s ? s[met] : null; } return d ? d[met] : null; });
+  const v = vals.filter(a=>a!=null && !isNaN(a));
+  if(!v.length){ x.fillStyle="#8b93a3"; x.fillText("Sin datos en el periodo", w/2-60, h/2); return; }
+  const isScore = ["sleep","rec","stress","effort","enMax"].includes(met);
+  const lo = isScore ? 0 : Math.min(...v)*0.9, hi = isScore ? 100 : Math.max(...v)*1.1;
+  grid(x,w,h,P,lo,hi,4, met==="sleepH" ? a=>a.toFixed(1) : null);
+  const X = i => P.l + (w-P.l-P.r)*(i+0.5)/n, Y = a => h-P.b-(h-P.t-P.b)*(a-lo)/(hi-lo), bw = Math.max(2,(w-P.l-P.r)/n - 2);
+  vals.forEach((a,i)=>{ if(a==null || isNaN(a)) return; x.fillStyle = met==="stress" ? stressCol(a) : isScore ? scoreCol(a) : "#4f8cc9"; x.fillRect(X(i)-bw/2, Y(a), bw, h-P.b-Y(a)); });
+  // media móvil 7 d
+  x.strokeStyle="#e6e8ec"; x.lineWidth=1.5; x.beginPath(); let st = false;
+  vals.forEach((a,i)=>{ const win = vals.slice(Math.max(0,i-6), i+1).filter(z=>z!=null&&!isNaN(z)); if(win.length<3) return; const m = mean(win); st ? x.lineTo(X(i),Y(m)) : (x.moveTo(X(i),Y(m)), st=true); }); x.stroke();
+  x.fillStyle="#8b93a3"; x.fillText(keys[0].slice(5), P.l, h-4); x.fillText(keys[n-1].slice(5), w-P.r-34, h-4);
+}
+function drawLoad(){
+  const c = $("cLoad"), {x,w,h} = prep(c), P = {l:36,r:8,t:8,b:20};
+  const L = loadSeries(today(), 90); if(!L.length){ x.fillStyle="#8b93a3"; x.fillText("Sin datos", w/2-20, h/2); return; }
+  const hi = Math.max(10, ...L.map(d=>Math.max(d.tr,d.ctl,d.atl)))*1.1; grid(x,w,h,P,0,hi,4);
+  const bw = (w-P.l-P.r)/L.length, Y = v => h-P.b-(h-P.t-P.b)*v/hi;
+  x.fillStyle="#4f8cc988"; L.forEach((d,i)=>x.fillRect(P.l+i*bw+1, Y(d.tr), Math.max(1,bw-2), h-P.b-Y(d.tr)));
+  [["ctl","#3fb6a8"],["atl","#e0605a"]].forEach(([k,col])=>{ x.strokeStyle=col; x.lineWidth=2; x.beginPath(); L.forEach((d,i)=>{ const X1 = P.l+i*bw+bw/2; i ? x.lineTo(X1,Y(d[k])) : x.moveTo(X1,Y(d[k])); }); x.stroke(); });
+  x.fillStyle="#8b93a3"; x.fillText(L[0].k.slice(5), P.l, h-4); x.fillText(L[L.length-1].k.slice(5), w-P.r-34, h-4);
+}
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+let viewDay = today();
+async function renderHoy(){
+  const d = viewDay, mins = (d===todayCache.d && todayCache.mins.length) ? todayCache.mins : await dayMins(d);
+  let s = S.days[d]; if(mins.length && (!s || s.legacy)) s = await summarizeDay(d, mins); s = s || {};
+  $("dLabel").textContent = fmtDate(d) + (d===today() ? " · hoy" : "");
+  $("dCov").textContent = mins.length ? "Registrado "+fmtHM(mins.length)+" de 24h" : "Sin registro";
+  const en = d===today() && S.energy && Date.now()-S.energy.t < 3600e3 ? S.energy.v : s.enEnd;
+  $("rings").innerHTML =
+    ring(s.sleep, "Sueño", s.sleepH ? fmtHM(s.sleepH*60) : "", scoreCol(s.sleep)) +
+    ring(s.rec, "Recuperación", s.hrv ? "HRV "+s.hrv+" ms" : "", scoreCol(s.rec)) +
+    ring(s.stress, "Estrés", s.stress!=null ? ST_NAME[stBand(s.stress)] : "", stressCol(s.stress)) +
+    ring(s.effort, "Esfuerzo", s.trimp ? "TRIMP "+Math.round(s.trimp) : "", "#4f8cc9") +
+    ring(en, "Energía", s.enMin!=null ? "mín "+s.enMin+" · máx "+s.enMax : "", "#9b7fe0");
+  drawDay(mins, d);
+  // estrés
+  const b = s.bands || [0,0,0,0,0], tot = b.reduce((a,c)=>a+c,0) || 1, bc = [...ST_COL, "#4f8cc9"], bn = [...ST_NAME, "Actividad"];
+  $("stSeg").innerHTML = b.map((v,i)=>`<div style="width:${v/tot*100}%;background:${bc[i]}"></div>`).join("");
+  $("stLeg").innerHTML = b.map((v,i)=>`<span><span style="color:${bc[i]}">■</span> ${bn[i]} ${fmtHM(v)}</span>`).join("");
+  const z = s.zones || [0,0,0,0,0,0], zt = z.reduce((a,c)=>a+c,0) || 1;
+  $("zSeg").innerHTML = z.map((v,i)=>`<div style="width:${v/zt*100}%;background:${Z_COL[i]}"></div>`).join("");
+  $("zLeg").innerHTML = z.map((v,i)=>`<span><span style="color:${Z_COL[i]}">■</span> ${Z_NAME[i]} ${fmtHM(v)}</span>`).join("");
+  $("actBox").innerHTML = `<div class="kv"><b>${fmtHM(s.actMin||0)}</b><span>Tiempo activo</span></div><div class="kv"><b>${nz(s.trimp,0)}</b><span>TRIMP</span></div><div class="kv"><b>${s.hrAvg||"--"}</b><span>FC media</span></div><div class="kv"><b>${s.hrMax||"--"}</b><span>FC máx</span></div>`;
+  renderAge(); renderInsights(d, s);
+}
+function renderAge(){
+  const a = age(), v = vo2();
+  if(!a){ $("ageBox").innerHTML = "Configura tu año de nacimiento en Ajustes."; return; }
+  const fa = fitnessAge(v), diff = fa - a;
+  $("ageBox").innerHTML = `<div class="row"><span class="big">${fa<=20?"≤20":Math.round(fa)}</span><span class="unit">años</span>
+    <span class="tag" style="background:${diff<=-3?"#58c27d":diff<3?"#3fb6a8":"#e0a03a"}">${diff<0?"":"+"}${Math.round(diff)} vs edad real (${a})</span></div>
+    <div class="row" style="margin-top:10px"><div class="kv"><b>${nz(v,1)}</b><span>VO2máx est. ml/kg/min</span></div><div class="kv"><b>${HRMAX()}</b><span>FC máx${S.settings.hrmax?"":" (auto)"}</span></div><div class="kv"><b>${HRREST()}</b><span>FC reposo${S.settings.hrrest?"":" (auto)"}</span></div></div>
+    <div class="note" style="margin-top:6px">Mejora con FC reposo más baja. Pon tu FC máx real (de un test) para afinar.</div>`;
+}
+function renderInsights(d, s){
+  const li = [];
+  const sl = S.sleeps[d];
+  if(sl){ li.push(`Dormiste ${fmtHM(sl.tst)} (eficiencia ${Math.round(sl.eff*100)} %, ${sl.awak} despertares).`);
+    if(sl.tst < (S.settings.goal||8)*60 - 60) li.push("Te falta más de 1 h de sueño respecto a tu objetivo."); }
+  else if(d===today()) li.push("Sin noche analizada: deja la pulsera conectada al dormir o usa 'Me voy a dormir'.");
+  if(s.rec!=null) li.push(s.rec>=70 ? "Recuperación buena: día apto para carga alta." : s.rec>=45 ? "Recuperación media: intensidad moderada." : "Recuperación baja: prioriza descanso o rodaje suave.");
+  const L = loadSeries(d,1)[0]; if(L && L.ctl>5){ const acwr = L.atl/L.ctl; li.push(`Carga aguda/crónica ${acwr.toFixed(2)} ${acwr>1.5?"(riesgo: subida brusca)":acwr<0.8?"(desentrenando)":"(zona óptima 0,8–1,3)"}.`); }
+  if(s.stress!=null && s.stress > 50) li.push("Estrés medio-alto en reposo: busca pausas y respiración lenta.");
+  if(!gotRR && lastT) li.push("La pulsera no envía intervalos RR: estrés y HRV se estiman solo con FC.");
+  $("insights").innerHTML = li.length ? li.map(t=>"<li>"+t+"</li>").join("") : '<li class="note">Sin datos todavía.</li>';
+}
+function renderLive(){
+  const on = lastT && Date.now()-lastT < 10e3;
+  $("hHr").textContent = on ? lastHR : "--"; $("lHr").textContent = on ? lastHR : "--";
+  $("lZone").textContent = on ? Z_NAME[zoneOf(lastHR)] : "--";
+  const r = rmssd(liveRR.map(x=>x.r)); $("lRm").textContent = r ? Math.round(r) : "--";
+  const st = on && !isAct(lastHR) ? stressOf(lastHR, r) : null; $("lSt").textContent = st==null ? (on?"act.":"--") : st;
+  $("lEn").textContent = S.energy && Date.now()-S.energy.t < 3600e3 ? Math.round(S.energy.v) : "--";
+  $("cov").textContent = S.days[today()] ? "hoy "+fmtHM(S.days[today()].cov) : "";
+  $("lNote").textContent = S.night ? "Modo noche activo desde "+new Date(S.night.start).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}) : "";
+  if(session){ $("sDur").textContent = fmtDur(session.sec); $("sTrimp").textContent = session.trimp.toFixed(1); $("sAvg").textContent = session.sec ? Math.round(session.hrSum/session.sec) : "--"; $("sMax").textContent = session.max||"--"; }
+}
+function renderSueno(){
+  $("nightState").textContent = S.night ? "Modo noche activo desde las "+new Date(S.night.start).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})+". Pulsa al despertar." : "Modo noche desactivado.";
+  $("bNight").textContent = S.night ? "Me he despertado" : "Me voy a dormir";
+  const keys = Object.keys(S.sleeps).sort(); const k = S.sleeps[viewDay] ? viewDay : keys[keys.length-1]; const sl = k && S.sleeps[k];
+  $("sDate").textContent = k ? "· "+fmtDate(k) : "";
+  if(sl){
+    const f = t => new Date(t).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
+    $("sleepBox").innerHTML = `<div style="display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center">${ring(sl.score,"Puntuación","",scoreCol(sl.score))}
+    <div><div class="row"><div class="kv"><b>${fmtHM(sl.tst)}</b><span>Dormido</span></div><div class="kv"><b>${f(sl.on)}–${f(sl.off)}</b><span>Horario</span></div><div class="kv"><b>${Math.round(sl.eff*100)} %</b><span>Eficiencia</span></div><div class="kv"><b>${sl.lat} min</b><span>Latencia</span></div><div class="kv"><b>${sl.awak}</b><span>Despertares</span></div></div>
+    <div class="row" style="margin-top:8px"><div class="kv"><b>${sl.rhr}</b><span>FC reposo</span></div><div class="kv"><b>${sl.hrv??"--"}</b><span>HRV nocturna ms</span></div><div class="kv"><b>${sl.stress??"--"}</b><span>Estrés medio</span></div><div class="kv"><b>${Math.round(sl.cov*100)} %</b><span>Cobertura</span></div></div></div></div>
+    <div class="seg" style="margin-top:12px"><div style="width:${sl.deep/sl.tst*100}%;background:#3d5bd6"></div><div style="width:${sl.light/sl.tst*100}%;background:#6f8fe8"></div><div style="width:${sl.rem/sl.tst*100}%;background:#9b7fe0"></div></div>
+    <div class="leg"><span><span style="color:#3d5bd6">■</span> Profundo ${fmtHM(sl.deep)}</span><span><span style="color:#6f8fe8">■</span> Ligero ${fmtHM(sl.light)}</span><span><span style="color:#9b7fe0">■</span> REM ${fmtHM(sl.rem)}</span><span><span style="color:#e0a03a">■</span> Despierto ${fmtHM(sl.waso)}</span></div>
+    <div class="note" style="margin-top:6px">Componentes: duración ${sl.parts.dur} · calidad ${sl.parts.qual} · recuperación ${sl.parts.rec}</div>`;
+  } else $("sleepBox").innerHTML = '<span class="note">Sin noches analizadas.</span>';
+  drawHyp(sl);
+  $("tSleep").innerHTML = keys.slice().reverse().map(k=>{ const s = S.sleeps[k]; return `<tr><td>${fmtDate(k)}</td><td style="color:${scoreCol(s.score)}">${s.score}</td><td>${fmtHM(s.tst)}</td><td>${Math.round(s.eff*100)}%</td><td>${s.lat}′</td><td>${s.awak}</td><td>${Math.round(s.deep/s.tst*100)}%</td><td>${Math.round(s.rem/s.tst*100)}%</td><td>${s.rhr}</td><td>${s.hrv??"--"}</td><td>${s.stress??"--"}</td></tr>`; }).join("") || '<tr><td colspan="11" class="note">Sin noches</td></tr>';
+}
+function renderHist(){
+  drawTrend();
+  const keys = Object.keys(S.days).sort().reverse();
+  $("tDays").innerHTML = keys.map(k=>{ const s = S.days[k]; return `<tr class="click" data-d="${k}"><td>${fmtDate(k)}</td><td style="color:${scoreCol(s.sleep)}">${s.sleep??"--"}</td><td style="color:${scoreCol(s.rec)}">${s.rec??"--"}</td><td style="color:${stressCol(s.stress)}">${s.stress??"--"}</td><td>${s.effort??"--"}</td><td>${s.enMin!=null?s.enMin+"–"+s.enMax:"--"}</td><td>${s.rhr??"--"}</td><td>${s.hrv??"--"}</td><td>${nz(s.trimp,0)}</td><td>${s.cov?fmtHM(s.cov):(s.legacy?"v1":"--")}</td></tr>`; }).join("") || '<tr><td colspan="10" class="note">Sin días</td></tr>';
+}
+function renderEntreno(){
+  $("tSess").innerHTML = S.sessions.slice().reverse().map(s=>`<tr><td>${new Date(s.ts).toLocaleString("es-ES",{dateStyle:"short",timeStyle:"short"})}</td><td>${fmtDur(s.sec)}</td><td>${s.avg}</td><td>${s.max}</td><td>${s.trimp}</td><td>${s.edwards}</td></tr>`).join("") || '<tr><td colspan="6" class="note">Sin sesiones</td></tr>';
+  $("tMorn").innerHTML = S.morning.slice().reverse().map(m=>`<tr><td>${m.date}</td><td>${m.rmssd}</td><td>${m.ln}</td><td>${m.rhr}</td><td>${m.n}</td><td><button class="sm" data-del="${m.date}">×</button></td></tr>`).join("") || '<tr><td colspan="6" class="note">Sin mediciones</td></tr>';
+  const L = loadSeries(today(),1)[0];
+  $("loadKv").innerHTML = L ? `<div class="kv"><b>${L.ctl.toFixed(0)}</b><span>Fitness CTL</span></div><div class="kv"><b>${L.atl.toFixed(0)}</b><span>Fatiga ATL</span></div><div class="kv"><b>${L.tsb.toFixed(0)}</b><span>Forma TSB</span></div><div class="kv"><b>${L.ctl>0?(L.atl/L.ctl).toFixed(2):"--"}</b><span>Agudo/crónico</span></div>` : "";
+  drawLoad();
+}
+async function renderAjustes(){
+  const p = S.settings; $("pBirth").value = p.birth||""; $("pSex").value = p.sex; $("pHrmax").value = p.hrmax||""; $("pHrrest").value = p.hrrest||""; $("pGoal").value = p.goal; $("pMorn").value = p.morningMin;
+  $("pDerived").textContent = `En uso: FC máx ${HRMAX()} · FC reposo ${HRREST()} · RMSSD de referencia ${Math.round(RMREF())} ms · umbral actividad ${Math.round(HRREST()+0.3*(HRMAX()-HRREST()))} ppm`;
+  const n = await idbCount(); $("dbInfo").textContent = `${n.toLocaleString("es-ES")} minutos registrados · ${Object.keys(S.days).length} días · ${Object.keys(S.sleeps).length} noches`+(DEMO?" · MODO DEMO":"");
+}
+let curTab = "hoy";
+function renderAll(){ renderLive(); if(curTab==="hoy") renderHoy(); if(curTab==="sueno") renderSueno(); if(curTab==="hist") renderHist(); if(curTab==="entreno") renderEntreno(); if(curTab==="ajustes") renderAjustes(); }
+
+/* =====================================================================
+   RECÁLCULO / EXPORT / IMPORT
+   ===================================================================== */
+async function recalcAll(){
+  msg("Recalculando…");
+  const all = (await idbAll()).sort((a,b)=>a.t-b.t);
+  if(!all.length){ msg("No hay minutos registrados."); return; }
+  S.energy = {v:60, t:0}; rm3buf = [];
+  const nightWin = []; // se recalculan noches tras procesar
+  for(const m of all){ const sl = Object.values(S.sleeps).find(s=>m.t>=s.start && m.t<=s.end); processMinute(m, !!sl); }
+  await idbPut(all);
+  const days = [...new Set(all.map(m=>m.k.slice(0,10)))].sort();
+  for(const d of days){ const w = S.sleeps[d] ? [S.sleeps[d].start, S.sleeps[d].end] : await detectSleep(d); if(w){ const sl = await analyzeSleep(w[0], w[1]); if(sl) await storeSleep(sl); } }
+  for(const d of days) await summarizeDay(d, all.filter(m=>m.k.startsWith(d)));
+  todayCache = {d:null, mins:[]}; save(); msg(""); renderAll();
+}
+function download(name, text, type){ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text],{type})); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000); }
+async function exportAll(){ const mins = await idbAll(); download("pulso-"+today()+".json", JSON.stringify({v:2, state:S, mins}), "application/json"); }
+function exportCsv(){
+  const rows = ["dia;sueno;horas_sueno;recuperacion;estres;esfuerzo;trimp;energia_min;energia_max;fc_reposo;hrv_noche;vo2max;min_registrados"];
+  Object.keys(S.days).sort().forEach(k=>{ const s = S.days[k]; rows.push([k,s.sleep??"",s.sleepH??"",s.rec??"",s.stress??"",s.effort??"",s.trimp??"",s.enMin??"",s.enMax??"",s.rhr??"",s.hrv??"",s.vo2??"",s.cov??""].join(";").replace(/\./g,",")); });
+  download("pulso-dias-"+today()+".csv", rows.join("\n"), "text/csv");
+}
+async function importAll(file){
+  try{ const d = JSON.parse(await file.text());
+    if(d.v===2){ await idbPut(d.mins||[]); const st = d.state;
+      Object.assign(S.sleeps, st.sleeps||{}); Object.assign(S.days, st.days||{});
+      const mm = Object.fromEntries([...S.morning, ...(st.morning||[])].map(m=>[m.date,m])); S.morning = Object.values(mm).sort((a,b)=>a.date<b.date?-1:1);
+      const ss = Object.fromEntries([...S.sessions, ...(st.sessions||[])].map(s=>[s.ts,s])); S.sessions = Object.values(ss).sort((a,b)=>a.ts-b.ts);
+      if(!S.settings.birth && st.settings) S.settings = st.settings; save(); await recalcAll(); msg("Importado y recalculado."); }
+    else if(d.settings){ S.morning = d.morning||S.morning; S.sessions = d.sessions||S.sessions; save(); renderAll(); msg("Importados datos v1 (tests matinales y sesiones)."); }
+    else throw new Error("formato no reconocido");
+  }catch(e){ msg("Error al importar: "+e.message); }
+}
+
+/* =====================================================================
+   DEMO: 30 días sintéticos procesados por el mismo motor
+   ===================================================================== */
+async function buildDemo(){
+  if(await idbCount() > 0) return;
+  S.settings.birth = 1990; S.settings.sex = "m"; S.settings.goal = 8; S.energy = {v:60,t:0};
+  const recs = []; const start = +new Date(addDays(today(),-29)+"T00:00"), end = Date.now();
+  let seed = 7; const rnd = () => (seed = (seed*16807)%2147483647)/2147483647;
+  for(let t = start; t < end; t += 60e3){
+    const d = new Date(t), h = d.getHours()+d.getMinutes()/60, dayN = Math.floor((t-start)/86400e3), fat = (dayN%7===6)?1:0;
+    const bed = 23.4 + (rnd()-0.5)*0.1 + (dayN%5===0?1:0), wake = 7.2;
+    let hr, rm, sleep = (h>=bed || h<wake);
+    if(sleep){ const cyc = Math.sin((h<12?h+24-bed:h-bed)*Math.PI*2/1.5); hr = 50 + fat*4 + 3*cyc + rnd()*2; rm = 62 - fat*15 - 8*cyc + rnd()*6; if(rnd()<0.01) hr += 20; }
+    else { hr = 68 + 8*Math.sin(h/3) + rnd()*5; rm = 38 + rnd()*10 - (h>9&&h<13?12:0); if(dayN%2===0 && h>=18 && h<19.6){ hr = 128 + 25*Math.sin((h-18)*3) + rnd()*6; rm = 8; } if(dayN%7===5 && h>=9 && h<13){ hr = 138 + 12*Math.sin(h*2) + rnd()*8; rm = 7; } }
+    if(!sleep && (h<8 || (h>14 && h<15.5)) && dayN%3===1) continue; // huecos sin registro
+    hr = Math.round(hr); const nd = Math.round(hr*0.95), m = {k:mKey(t), t, hr, hrMin:hr-2-Math.round(rnd()*3), hrMax:hr+2+Math.round(rnd()*3), ssd:Math.round(rm*rm*nd), nd, n:hr};
+    processMinute(m, false); recs.push(m);
+  }
+  await idbPut(recs);
+  for(let i=29;i>=0;i--){ const d = addDays(today(),-i); const w = await detectSleep(d); if(w){ const sl = await analyzeSleep(w[0],w[1]); if(sl) await storeSleep(sl); } }
+  for(let i=29;i>=0;i--){ const d = addDays(today(),-i); await summarizeDay(d); }
+  for(let i=0;i<10;i++){ const d = addDays(today(),-i*2); S.morning.push({date:d, ts:+new Date(d+"T07:30"), rmssd:58+i%3*4, ln:+Math.log(58+i%3*4).toFixed(3), rhr:50, n:150}); }
+  S.morning.sort((a,b)=>a.date<b.date?-1:1);
+  S.sessions.push({ts:Date.now()-2*86400e3, sec:5400, avg:142, max:171, trimp:142.3, edwards:210});
   save();
 }
 
-/* ---------- Bluetooth ---------- */
-let device = null, userDisc = false, retries = 0, sim = null;
-function setConn(on, txt){
-  $("dot").classList.toggle("on", on); $("status").textContent = txt;
-  $("bDisc").disabled = !on; $("bConnect").disabled = on; $("bMorning").disabled = !on; $("bSess").disabled = !on && !session;
-}
-async function connect(){
-  if(!navigator.bluetooth){ setMsg("Este navegador no tiene Web Bluetooth. Usa Edge o Chrome en Windows, Mac o Android (no funciona en iPhone)."); return; }
-  try{
-    device = await navigator.bluetooth.requestDevice({
-      filters:[{services:["heart_rate"]},{namePrefix:"WHOOP"},{namePrefix:"Whoop"}],
-      optionalServices:["heart_rate","battery_service"]
-    });
-    device.addEventListener("gattserverdisconnected", onDisc);
-    userDisc = false; retries = 0;
-    await gattConnect();
-  }catch(e){ if(e.name !== "NotFoundError") setMsg("Error al conectar: " + e.message); }
-}
-async function gattConnect(){
-  setConn(false, "Conectando a " + (device.name||"dispositivo") + "…");
-  const server = await device.gatt.connect();
-  let svc;
-  try{ svc = await server.getPrimaryService("heart_rate"); }
-  catch(e){ setConn(false, "Sin servicio de FC"); setMsg("La pulsera no expone el servicio estándar de FC. Cierra la app oficial (o apaga el Bluetooth del móvil) y activa la emisión de FC si tu modelo lo requiere."); return; }
-  const ch = await svc.getCharacteristic("heart_rate_measurement");
-  ch.addEventListener("characteristicvaluechanged", ev => { const p = parseHRM(ev.target.value); onSample(p.hr, p.rr, Date.now()); });
-  await ch.startNotifications();
-  retries = 0; setConn(true, "Conectado · " + (device.name||"pulsera")); setMsg("");
-  try{ const b = await server.getPrimaryService("battery_service"); const c = await b.getCharacteristic("battery_level"); const v = await c.readValue(); $("batt").textContent = "Batería " + v.getUint8(0) + " %"; }catch(e){ $("batt").textContent = ""; }
-}
-function onDisc(){
-  lastT = null;
-  if(userDisc){ setConn(false, "Desconectado"); return; }
-  if(retries >= 6){ setConn(false, "Conexión perdida"); setMsg("No se pudo reconectar. Pulsa Conectar."); return; }
-  const wait = Math.min(30, 2 ** retries) * 1000; retries++;
-  setConn(false, "Reconectando en " + wait/1000 + " s…");
-  setTimeout(()=>gattConnect().catch(()=>onDisc()), wait);
-}
-function disconnect(){
-  userDisc = true;
-  if(sim){ clearInterval(sim); sim = null; $("bSim").textContent = "Modo demo"; setConn(false, "Desconectado"); lastT = null; return; }
-  if(device && device.gatt.connected) device.gatt.disconnect(); else setConn(false, "Desconectado");
-}
+/* =====================================================================
+   EVENTOS / ARRANQUE
+   ===================================================================== */
+document.querySelectorAll("nav button").forEach(b=>b.onclick = ()=>{ curTab = b.dataset.t; document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on", x===b)); document.querySelectorAll(".tab").forEach(t=>t.hidden = t.id !== "t-"+curTab); window.scrollTo(0,0); renderAll(); });
+$("bConnect").onclick = connect; $("bDisc").onclick = disconnect; $("bSim").onclick = toggleSim; $("bWake").onclick = ()=>setWake(!wantWake);
+$("dPrev").onclick = ()=>{ viewDay = addDays(viewDay,-1); renderHoy(); }; $("dNext").onclick = ()=>{ if(viewDay < today()){ viewDay = addDays(viewDay,1); renderHoy(); } }; $("dToday").onclick = ()=>{ viewDay = today(); renderHoy(); };
+$("bNight").onclick = toggleNight; $("bDetect").onclick = manualDetect; $("bSess").onclick = toggleSession; $("bMorning").onclick = startMorning;
+$("tMorn").addEventListener("click", e=>{ const k = e.target.dataset.del; if(k){ S.morning = S.morning.filter(m=>m.date!==k); save(); renderEntreno(); } });
+$("tDays").addEventListener("click", e=>{ const tr = e.target.closest("tr[data-d]"); if(tr){ viewDay = tr.dataset.d; document.querySelector('nav button[data-t="hoy"]').click(); } });
+$("hMetric").onchange = drawTrend; $("hRange").onchange = drawTrend;
+["pBirth","pSex","pHrmax","pHrrest","pGoal","pMorn"].forEach(id=>$(id).addEventListener("change", ()=>{
+  S.settings = {birth:+$("pBirth").value||null, sex:$("pSex").value, hrmax:+$("pHrmax").value||null, hrrest:+$("pHrrest").value||null, goal:+$("pGoal").value||8, morningMin:+$("pMorn").value}; save(); renderAjustes(); }));
+$("bExp").onclick = exportAll; $("bCsv").onclick = exportCsv; $("bImp").onclick = ()=>$("fImp").click(); $("fImp").onchange = e=>importAll(e.target.files[0]);
+$("bRecalc").onclick = recalcAll;
+$("bWipe").onclick = async ()=>{ if($("bWipe").dataset.c !== "1"){ $("bWipe").dataset.c = "1"; $("bWipe").textContent = "Pulsa otra vez para borrar"; setTimeout(()=>{ $("bWipe").dataset.c=""; $("bWipe").textContent="Borrar todo"; }, 4000); return; }
+  await idbClear(); S = structuredClone(DEF); save(); renderAll(); msg("Datos borrados."); };
+window.addEventListener("resize", ()=>renderAll());
+window.addEventListener("pagehide", ()=>{ flushMinute(); save(); });
 
-/* ---------- modo demo: genera paquetes 0x2A37 reales y los pasa por el parser ---------- */
-function toggleSim(){
-  if(sim){ disconnect(); return; }
-  let base = 62, ph = 0;
-  sim = setInterval(()=>{
-    ph += 0.02; const target = base + 40*Math.max(0, Math.sin(ph/3)) ;
-    const rrs = []; let acc = 0;
-    while(acc < 1000){ const hrInst = target + 4*Math.sin(ph*7 + acc/300) + (Math.random()-0.5)*3; const r = 60000/hrInst; rrs.push(r); acc += r; }
-    const hr = Math.round(60000/mean(rrs));
-    const buf = new DataView(new ArrayBuffer(2 + rrs.length*2));
-    buf.setUint8(0, 0x10 | 0x06); buf.setUint8(1, hr);
-    rrs.forEach((r,i)=>buf.setUint16(2+i*2, Math.round(r*1024/1000), true));
-    const p = parseHRM(buf); onSample(p.hr, p.rr, Date.now());
-  }, 1000);
-  $("bSim").textContent = "Parar demo"; userDisc = false; setConn(true, "Modo demo (datos simulados)");
-}
-
-/* ---------- medición matinal ---------- */
-function startMorning(){
-  if(morning) return;
-  const dur = S.settings.morningMin * 60;
-  morning = {start: Date.now(), dur, rr:[], hr:[]};
-  $("bMorning").disabled = true;
-  const tick = setInterval(()=>{
-    const el = (Date.now() - morning.start)/1000;
-    $("mCount").textContent = el < 30 ? "Estabilizando… " + Math.ceil(30-el) + " s" : "Midiendo… " + fmtDur(dur - el);
-    if(el >= dur){ clearInterval(tick); finishMorning(); }
-  }, 500);
-}
-function finishMorning(){
-  const t0 = morning.start + 30e3;
-  const raw = morning.rr.filter(x=>x.t >= t0).map(x=>x.rr);
-  const {clean, rejected} = cleanRR(raw);
-  const hrs = morning.hr.filter(x=>x.t >= t0).map(x=>x.hr);
-  morning = null; $("bMorning").disabled = !$("bDisc").disabled ? false : true;
-  if(clean.length < 60){ $("mCount").textContent = "Medición no válida: " + clean.length + " latidos limpios (mín. 60). ¿La pulsera envía intervalos RR?"; return; }
-  const v = rmssd(clean);
-  const rec = {date: todayKey(), ts: Date.now(), rmssd: +v.toFixed(1), ln: +Math.log(v).toFixed(3), rhr: Math.round(Math.min(...rollingMin(hrs))), n: clean.length, art: +(rejected/(raw.length||1)*100).toFixed(1)};
-  S.morning = S.morning.filter(m=>m.date !== rec.date); S.morning.push(rec); S.morning.sort((a,b)=>a.date<b.date?-1:1);
-  save(true); $("mCount").textContent = "Guardado: RMSSD " + rec.rmssd + " ms";
-  renderTables(); renderReady(); drawHrv();
-}
-function rollingMin(h){ // FC reposo = mínimo de medias móviles de 10 muestras
-  if(h.length < 10) return h.length? h : [0];
-  const r=[]; for(let i=0;i+10<=h.length;i++) r.push(mean(h.slice(i,i+10))); return r;
-}
-
-/* ---------- disposición ---------- */
-function baselineFor(date){ // registros de los 30 días previos
-  const lim = new Date(date); lim.setDate(lim.getDate()-30); const lk = todayKey(lim);
-  return S.morning.filter(m=>m.date < date && m.date >= lk);
-}
-function roll7(idx){ const d = new Date(S.morning[idx].date); d.setDate(d.getDate()-6); const k = todayKey(d); return S.morning.filter((m,i)=>i<=idx && m.date>=k).map(m=>m.ln); }
-function renderReady(){
-  const box = $("readyBox");
-  if(!S.morning.length){ box.innerHTML = '<span class="note">Sin mediciones aún.</span>'; return; }
-  const last = S.morning[S.morning.length-1];
-  const base = baselineFor(last.date);
-  let tag, txt;
-  if(base.length < 5){ tag = '<span class="tag" style="background:#333a48">Calibrando</span>'; txt = "Faltan " + (5-base.length) + " mediciones previas para tener línea base."; }
-  else{
-    const lns = base.map(m=>m.ln), m = mean(lns), s = sd(lns), z = (last.ln - m)/(s||1e-9);
-    const r7 = mean(roll7(S.morning.length-1));
-    const rh = mean(base.map(b=>b.rhr));
-    const swc = 0.5*s;
-    let col, lab;
-    if(last.ln < m - swc){ col = "var(--bad)"; lab = "Baja"; } else if(last.ln > m + swc){ col = "var(--good)"; lab = "Alta"; } else { col = "var(--acc)"; lab = "Normal"; }
-    tag = `<span class="tag" style="background:${col};color:#0b0d11">${lab}</span>`;
-    txt = `ln RMSSD ${last.ln.toFixed(2)} vs base ${m.toFixed(2)} (z ${z>=0?"+":""}${z.toFixed(2)}, ${((Math.exp(last.ln-m)-1)*100).toFixed(0)} %)<br>Media 7 d: ${r7.toFixed(2)} · FC reposo ${last.rhr} (${last.rhr-rh>=0?"+":""}${(last.rhr-rh).toFixed(0)} vs base)`;
-  }
-  box.innerHTML = `<div class="row"><span class="big" style="font-size:40px">${last.rmssd}</span><span class="unit">ms</span>${tag}</div><div class="note" style="margin-top:6px">${last.date}<br>${txt}</div>`;
-}
-
-/* ---------- carga CTL/ATL ---------- */
-function loadSeries(n=60){
-  const out = []; let ctl = 0, atl = 0;
-  const keys = Object.keys(S.days).sort();
-  const start = new Date(keys.length ? keys[0] : todayKey()); const end = new Date(todayKey());
-  for(let d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
-    const k = todayKey(d), tr = S.days[k] ? S.days[k].trimp : 0;
-    ctl += (tr - ctl)/42; atl += (tr - atl)/7; out.push({k, tr, ctl, atl});
-  }
-  return out.slice(-n);
-}
-
-/* ---------- sesiones ---------- */
-let sessTick = null;
-function toggleSession(){
-  if(!session){
-    session = {start: Date.now(), trimp:0, edwards:0, sec:0, hrSum:0, max:0};
-    $("bSess").textContent = "Terminar sesión";
-    sessTick = setInterval(renderSession, 1000);
-  } else {
-    clearInterval(sessTick);
-    if(session.sec >= 60) S.sessions.push({ts: session.start, sec: Math.round(session.sec), avg: Math.round(session.hrSum/session.sec), max: session.max, trimp: +session.trimp.toFixed(1), edwards: +session.edwards.toFixed(1)});
-    session = null; save(true); $("bSess").textContent = "Iniciar sesión"; $("bSess").disabled = $("bDisc").disabled; renderTables();
-  }
-}
-function renderSession(){
-  if(!session) return;
-  $("sDur").textContent = fmtDur(session.sec); $("sTrimp").textContent = session.trimp.toFixed(1);
-  $("sAvg").textContent = session.sec ? Math.round(session.hrSum/session.sec) : "--"; $("sMax").textContent = session.max || "--";
-}
-
-/* ---------- gráficos ---------- */
-function prep(c){ const r = window.devicePixelRatio||1, w = c.clientWidth, h = c.height/ (c._r||1); c._r = r; c.width = w*r; c.height = h*r; c.style.height = h+"px"; const x = c.getContext("2d"); x.setTransform(r,0,0,r,0,0); return {x, w, h}; }
-function axes(x, w, h, pad, lo, hi, ticks){
-  x.strokeStyle = "#262b36"; x.fillStyle = "#8b93a3"; x.font = "11px system-ui"; x.lineWidth = 1;
-  for(let i=0;i<=ticks;i++){ const v = lo + (hi-lo)*i/ticks, y = h-pad.b - (h-pad.t-pad.b)*i/ticks; x.beginPath(); x.moveTo(pad.l,y); x.lineTo(w-pad.r,y); x.stroke(); x.fillText((Math.abs(hi-lo)<10? v.toFixed(1): Math.round(v)), 4, y+4); }
-}
-function drawLive(){
-  const c = $("cLive"), {x,w,h} = prep(c), pad = {l:34,r:8,t:8,b:18};
-  x.clearRect(0,0,w,h);
-  const now = Date.now(), t0 = now - 15*60e3;
-  const hrs = live.map(p=>p.hr); const lo = Math.max(30, Math.min(...hrs, S.settings.hrrest) - 5), hi = Math.max(...hrs, 120) + 5;
-  // bandas de zona
-  for(let z=1; z<=5; z++){ const a = S.settings.hrmax*(0.4+0.1*z), b = S.settings.hrmax*(0.5+0.1*z);
-    const ya = h-pad.b-(h-pad.t-pad.b)*(Math.max(lo,Math.min(hi,a))-lo)/(hi-lo), yb = h-pad.b-(h-pad.t-pad.b)*(Math.max(lo,Math.min(hi,b))-lo)/(hi-lo);
-    x.fillStyle = ZCOL[z] + "18"; x.fillRect(pad.l, yb, w-pad.l-pad.r, ya-yb); }
-  axes(x,w,h,pad,lo,hi,4);
-  x.fillStyle="#8b93a3"; ["-15 min","-10","-5","ahora"].forEach((l,i)=>x.fillText(l, pad.l + (w-pad.l-pad.r)*i/3 - (i===3?28:0), h-4));
-  if(live.length < 2) return;
-  x.strokeStyle = "#3fb6a8"; x.lineWidth = 2; x.beginPath();
-  live.forEach((p,i)=>{ const X = pad.l + (w-pad.l-pad.r)*(p.t-t0)/(now-t0), Y = h-pad.b-(h-pad.t-pad.b)*(p.hr-lo)/(hi-lo); i? x.lineTo(X,Y) : x.moveTo(X,Y); });
-  x.stroke();
-}
-function drawHrv(){
-  const c = $("cHrv"), {x,w,h} = prep(c), pad = {l:34,r:8,t:8,b:18};
-  x.clearRect(0,0,w,h);
-  const M = S.morning.slice(-60);
-  if(M.length < 1){ x.fillStyle="#8b93a3"; x.font="12px system-ui"; x.fillText("Sin mediciones matinales", pad.l+8, h/2); return; }
-  const off = S.morning.length - M.length;
-  const band = M.map((m,i)=>{ const b = baselineFor(m.date).map(z=>z.ln); return b.length>=5 ? {m:mean(b), s:sd(b)} : null; });
-  const r7 = M.map((m,i)=>mean(roll7(off+i)));
-  const vals = M.map(m=>m.ln).concat(r7); band.forEach(b=>{ if(b){ vals.push(b.m+b.s*0.5, b.m-b.s*0.5);} });
-  const lo = Math.min(...vals)-0.2, hi = Math.max(...vals)+0.2;
-  axes(x,w,h,pad,lo,hi,4);
-  const X = i => pad.l + (w-pad.l-pad.r)*(M.length===1? 0.5 : i/(M.length-1)), Y = v => h-pad.b-(h-pad.t-pad.b)*(v-lo)/(hi-lo);
-  // banda normal
-  x.fillStyle = "#3fb6a822"; x.beginPath(); let started = false;
-  band.forEach((b,i)=>{ if(b){ const p=[X(i),Y(b.m+0.5*b.s)]; started? x.lineTo(...p) : (x.moveTo(...p), started=true); } });
-  for(let i=band.length-1;i>=0;i--){ const b=band[i]; if(b) x.lineTo(X(i), Y(b.m-0.5*b.s)); }
-  if(started){ x.closePath(); x.fill(); }
-  // media 7 d
-  x.strokeStyle = "#c9b84f"; x.lineWidth = 2; x.beginPath(); r7.forEach((v,i)=> i? x.lineTo(X(i),Y(v)) : x.moveTo(X(i),Y(v))); x.stroke();
-  // puntos diarios
-  M.forEach((m,i)=>{ const b=band[i]; x.fillStyle = !b ? "#8b93a3" : m.ln < b.m-0.5*b.s ? "#e0605a" : m.ln > b.m+0.5*b.s ? "#58c27d" : "#3fb6a8"; x.beginPath(); x.arc(X(i),Y(m.ln),3.5,0,7); x.fill(); });
-  x.fillStyle="#8b93a3"; x.fillText(M[0].date.slice(5), pad.l, h-4); x.fillText(M[M.length-1].date.slice(5), w-pad.r-32, h-4);
-}
-function drawLoad(){
-  const c = $("cLoad"), {x,w,h} = prep(c), pad = {l:34,r:8,t:8,b:18};
-  x.clearRect(0,0,w,h);
-  const L = loadSeries(60); if(!L.length) return;
-  const hi = Math.max(10, ...L.map(d=>Math.max(d.tr,d.ctl,d.atl)))*1.1;
-  axes(x,w,h,pad,0,hi,4);
-  const bw = (w-pad.l-pad.r)/L.length, Y = v => h-pad.b-(h-pad.t-pad.b)*v/hi;
-  x.fillStyle = "#4f8cc9aa"; L.forEach((d,i)=>{ x.fillRect(pad.l+i*bw+1, Y(d.tr), Math.max(1,bw-2), h-pad.b-Y(d.tr)); });
-  [["ctl","#3fb6a8"],["atl","#e0605a"]].forEach(([k,col])=>{ x.strokeStyle=col; x.lineWidth=2; x.beginPath(); L.forEach((d,i)=>{ const X=pad.l+i*bw+bw/2; i? x.lineTo(X,Y(d[k])) : x.moveTo(X,Y(d[k])); }); x.stroke(); });
-  x.fillStyle="#8b93a3"; x.fillText(L[0].k.slice(5), pad.l, h-4); x.fillText(L[L.length-1].k.slice(5), w-pad.r-32, h-4);
-}
-
-/* ---------- render ---------- */
-function renderLive(){
-  $("hr").textContent = lastHR && lastT && Date.now()-lastT < 10e3 ? lastHR : "--";
-  if(lastHR){ $("hrPct").textContent = Math.round(lastHR/S.settings.hrmax*100); $("zoneNow").textContent = ZNAME[zoneOf(lastHR)]; }
-  const raw = rrLive.map(r=>r.rr), {clean, rejected} = cleanRR(raw), v = rmssd(clean);
-  $("rrLast").textContent = raw.length ? Math.round(raw[raw.length-1]) : "--";
-  $("rmssd").textContent = v ? v.toFixed(0) : "--"; $("lnr").textContent = v ? Math.log(v).toFixed(2) : "--";
-  $("nRR").textContent = clean.length; $("art").textContent = raw.length ? Math.round(rejected/raw.length*100)+"%" : "0%";
-  if(lastT && !gotRR && live.length > 15) setMsg("La pulsera envía FC pero no intervalos RR: la HRV no está disponible con este flujo.");
-  const d = day(todayKey()); $("trimpDay").textContent = d.trimp.toFixed(0);
-  const tot = d.zoneSec.reduce((a,b)=>a+b,0)||1;
-  $("zoneBar").innerHTML = d.zoneSec.map((s,i)=>`<div style="width:${s/tot*100}%;background:${ZCOL[i]}"></div>`).join("");
-  $("zoneLeg").innerHTML = d.zoneSec.map((s,i)=>`<span><span style="color:${ZCOL[i]}">■</span> ${ZNAME[i]} ${fmtDur(s)}</span>`).join("");
-  const L = loadSeries(1)[0]; if(L){ $("ctl").textContent = L.ctl.toFixed(0); $("atl").textContent = L.atl.toFixed(0); $("tsb").textContent = (L.ctl-L.atl).toFixed(0); }
-  drawLive();
-}
-function renderTables(){
-  $("tSess").innerHTML = S.sessions.slice().reverse().map(s=>`<tr><td>${new Date(s.ts).toLocaleString("es-ES",{dateStyle:"short",timeStyle:"short"})}</td><td>${fmtDur(s.sec)}</td><td>${s.avg}</td><td>${s.max}</td><td>${s.trimp}</td><td>${s.edwards}</td></tr>`).join("") || '<tr><td colspan="6" class="note">Sin sesiones</td></tr>';
-  $("tMorn").innerHTML = S.morning.slice().reverse().map(m=>`<tr><td>${m.date}</td><td>${m.rmssd}</td><td>${m.ln}</td><td>${m.rhr}</td><td>${m.n}</td><td>${m.art}%</td><td><button data-del="${m.date}" style="padding:1px 7px">×</button></td></tr>`).join("") || '<tr><td colspan="7" class="note">Sin mediciones</td></tr>';
-}
-$("tMorn").addEventListener("click", e=>{ const k = e.target.dataset.del; if(!k) return; S.morning = S.morning.filter(m=>m.date!==k); save(true); renderTables(); renderReady(); drawHrv(); });
-
-/* ---------- ajustes / export ---------- */
-function bindSettings(){
-  $("sHrmax").value = S.settings.hrmax; $("sHrrest").value = S.settings.hrrest; $("sSex").value = S.settings.sex; $("sMorn").value = S.settings.morningMin;
-  const upd = ()=>{ S.settings = {hrmax:+$("sHrmax").value||190, hrrest:+$("sHrrest").value||50, sex:$("sSex").value, morningMin:+$("sMorn").value}; save(true); renderLive(); };
-  ["sHrmax","sHrrest","sSex","sMorn"].forEach(id=>$(id).addEventListener("change", upd));
-}
-function download(name, text, type){ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text],{type})); a.download = name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000); }
-$("bExp").onclick = ()=>download("pulso-"+todayKey()+".json", JSON.stringify(S,null,1), "application/json");
-$("bCsv").onclick = ()=>{
-  const days = Object.keys(S.days).sort(), mm = Object.fromEntries(S.morning.map(m=>[m.date,m])), L = Object.fromEntries(loadSeries(100000).map(d=>[d.k,d]));
-  const rows = ["fecha;rmssd_ms;ln_rmssd;fc_reposo;trimp;edwards;min_registrados;ctl;atl"];
-  [...new Set(days.concat(Object.keys(mm)))].sort().forEach(k=>{ const d=S.days[k]||{}, m=mm[k]||{}, l=L[k]||{}; rows.push([k,m.rmssd??"",m.ln??"",m.rhr??"",(d.trimp??0).toFixed(1),(d.edwards??0).toFixed(1),((d.sec??0)/60).toFixed(0),(l.ctl??0).toFixed(1),(l.atl??0).toFixed(1)].join(";").replace(/\./g,",")); });
-  download("pulso-"+todayKey()+".csv", rows.join("\n"), "text/csv");
-};
-$("bImp").onclick = ()=>$("fImp").click();
-$("fImp").onchange = async e=>{ try{ const d = JSON.parse(await e.target.files[0].text()); if(!d.settings) throw new Error("formato no válido"); S = Object.assign(structuredClone(DEF), d); save(true); bindSettings(); renderAll(); setMsg("Datos importados."); }catch(err){ setMsg("Error al importar: " + err.message); } };
-
-/* ---------- arranque ---------- */
-function renderAll(){ renderLive(); renderTables(); renderReady(); drawHrv(); drawLoad(); }
-$("bConnect").onclick = connect; $("bDisc").onclick = disconnect; $("bSim").onclick = toggleSim;
-$("bMorning").onclick = startMorning; $("bSess").onclick = toggleSession;
-bindSettings(); renderAll();
-setInterval(renderLive, 1000); setInterval(drawLoad, 30000);
-window.addEventListener("resize", renderAll);
-if(!navigator.bluetooth) setMsg("Abre este archivo en Edge o Chrome de un ordenador para conectar por Bluetooth.");
+(async function init(){
+  try{ DB = await idbOpen(); }catch(e){ msg("No se pudo abrir la base de datos local: "+e.message); return; }
+  if(DEMO){ document.querySelector("header h1").textContent = "PULSO · DEMO"; await buildDemo(); }
+  const td = await dayMins(today()); todayCache = {d:today(), mins:td}; if(td.length) S.energy = {v:td[td.length-1].en, t:td[td.length-1].t};
+  if(!navigator.bluetooth) msg("Sin Bluetooth web en este navegador: puedes ver tus datos, pero para conectar usa Edge/Chrome en PC o Bluefy en iPhone.");
+  renderAll();
+  setInterval(renderLive, 1000);
+  setInterval(()=>{ if(cur && Date.now() - cur.t > 70e3) flushMinute(); }, 15e3);
+  setInterval(autoSleep, 10*60e3); setTimeout(autoSleep, 5000);
+  setInterval(()=>{ if(viewDay===today() && curTab==="hoy") renderHoy(); }, 60e3);
+})();
 </script>
 </body>
 </html>
