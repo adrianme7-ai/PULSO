@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pulso — FC y HRV en local</title>
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--line:#262b36;--txt:#e6e8ec;--mut:#8b93a3;--acc:#3fb6a8;--warn:#e0a03a;--bad:#e0605a;--good:#58c27d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:18px;margin:0;letter-spacing:.5px}
+header .st{color:var(--mut);font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--bad);display:inline-block;margin-right:6px}
+.dot.on{background:var(--good)}
+main{max-width:1150px;margin:0 auto;padding:18px;display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.c4{grid-column:span 4}.c6{grid-column:span 6}.c8{grid-column:span 8}.c12{grid-column:span 12}
+@media(max-width:860px){.c4,.c6,.c8{grid-column:span 12}}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);margin:0 0 10px;font-weight:600}
+.big{font-size:52px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.unit{font-size:14px;color:var(--mut);margin-left:4px}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:baseline}
+.kv{min-width:90px}.kv b{display:block;font-size:20px;font-variant-numeric:tabular-nums}.kv span{color:var(--mut);font-size:12px}
+button{background:#232833;color:var(--txt);border:1px solid #333a48;border-radius:7px;padding:7px 12px;font:inherit;cursor:pointer}
+button:hover{border-color:var(--acc)}button.pri{background:var(--acc);border-color:var(--acc);color:#06221f;font-weight:600}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select{background:#0f1218;color:var(--txt);border:1px solid #333a48;border-radius:6px;padding:5px 7px;font:inherit;width:90px}
+label{color:var(--mut);font-size:12px;display:flex;flex-direction:column;gap:3px}
+canvas{width:100%;display:block}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:5px 6px;border-bottom:1px solid var(--line);font-size:13px}
+th:first-child,td:first-child{text-align:left}th{color:var(--mut);font-weight:500}
+.zones{display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:8px;background:#0f1218}
+.zl{display:flex;gap:10px;flex-wrap:wrap;color:var(--mut);font-size:12px;margin-top:6px}
+.msg{color:var(--warn);font-size:12px;min-height:16px;margin-top:6px}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600}
+.note{color:var(--mut);font-size:12px}
+.scroll{max-height:260px;overflow:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>PULSO</h1>
+  <span class="st"><span id="dot" class="dot"></span><span id="status">Desconectado</span></span>
+  <span class="st" id="batt"></span>
+  <span style="flex:1"></span>
+  <button class="pri" id="bConnect">Conectar pulsera</button>
+  <button id="bDisc" disabled>Desconectar</button>
+  <button id="bSim" title="Datos simulados para probar la interfaz">Modo demo</button>
+</header>
+
+<main>
+  <section class="card c4">
+    <h2>Frecuencia cardíaca</h2>
+    <div><span class="big" id="hr">--</span><span class="unit">ppm</span></div>
+    <div class="row" style="margin-top:12px">
+      <div class="kv"><b id="hrPct">--</b><span>% FCmáx</span></div>
+      <div class="kv"><b id="zoneNow">--</b><span>Zona</span></div>
+      <div class="kv"><b id="rrLast">--</b><span>Último RR (ms)</span></div>
+    </div>
+    <div class="msg" id="rrMsg"></div>
+  </section>
+
+  <section class="card c4">
+    <h2>HRV en directo (ventana 60 s)</h2>
+    <div><span class="big" id="rmssd">--</span><span class="unit">ms RMSSD</span></div>
+    <div class="row" style="margin-top:12px">
+      <div class="kv"><b id="lnr">--</b><span>ln RMSSD</span></div>
+      <div class="kv"><b id="nRR">0</b><span>Latidos válidos</span></div>
+      <div class="kv"><b id="art">0%</b><span>Artefactos</span></div>
+    </div>
+    <div class="note" style="margin-top:8px">La HRV en movimiento no es comparable; la referencia es la medición matinal.</div>
+  </section>
+
+  <section class="card c4">
+    <h2>Carga de hoy</h2>
+    <div><span class="big" id="trimpDay">0</span><span class="unit">TRIMP</span></div>
+    <div class="row" style="margin-top:12px">
+      <div class="kv"><b id="ctl">--</b><span>Fitness (CTL 42d)</span></div>
+      <div class="kv"><b id="atl">--</b><span>Fatiga (ATL 7d)</span></div>
+      <div class="kv"><b id="tsb">--</b><span>Forma (CTL−ATL)</span></div>
+    </div>
+    <div class="zones" id="zoneBar"></div>
+    <div class="zl" id="zoneLeg"></div>
+  </section>
+
+  <section class="card c8">
+    <h2>FC — últimos 15 min</h2>
+    <canvas id="cLive" height="190"></canvas>
+  </section>
+
+  <section class="card c4">
+    <h2>Disposición (HRV matinal)</h2>
+    <div id="readyBox"><span class="note">Sin mediciones aún.</span></div>
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="pri" id="bMorning" disabled>Medir HRV matinal</button>
+      <span id="mCount" class="note"></span>
+    </div>
+    <div class="note" style="margin-top:8px">Al despertar, tumbado y quieto. Se descartan los primeros 30 s.</div>
+  </section>
+
+  <section class="card c6">
+    <h2>ln RMSSD matinal y línea base (media 7 días ± 0,5 DE)</h2>
+    <canvas id="cHrv" height="200"></canvas>
+  </section>
+
+  <section class="card c6">
+    <h2>Carga diaria (TRIMP) · CTL · ATL</h2>
+    <canvas id="cLoad" height="200"></canvas>
+  </section>
+
+  <section class="card c6">
+    <h2>Sesión de entrenamiento</h2>
+    <div class="row">
+      <button class="pri" id="bSess" disabled>Iniciar sesión</button>
+      <div class="kv"><b id="sDur">0:00</b><span>Duración</span></div>
+      <div class="kv"><b id="sTrimp">0</b><span>TRIMP</span></div>
+      <div class="kv"><b id="sAvg">--</b><span>FC media</span></div>
+      <div class="kv"><b id="sMax">--</b><span>FC máx</span></div>
+    </div>
+    <div class="scroll" style="margin-top:10px">
+      <table><thead><tr><th>Fecha</th><th>Dur.</th><th>FC med</th><th>FC máx</th><th>TRIMP</th><th>Edwards</th></tr></thead><tbody id="tSess"></tbody></table>
+    </div>
+  </section>
+
+  <section class="card c6">
+    <h2>Mediciones matinales</h2>
+    <div class="scroll">
+      <table><thead><tr><th>Fecha</th><th>RMSSD</th><th>ln</th><th>FC reposo</th><th>Latidos</th><th>Artef.</th><th></th></tr></thead><tbody id="tMorn"></tbody></table>
+    </div>
+  </section>
+
+  <section class="card c12">
+    <h2>Ajustes y datos</h2>
+    <div class="row" style="align-items:flex-end">
+      <label>FC máx<input type="number" id="sHrmax" min="120" max="230"></label>
+      <label>FC reposo<input type="number" id="sHrrest" min="30" max="100"></label>
+      <label>Sexo (TRIMP)<select id="sSex"><option value="m">Hombre</option><option value="f">Mujer</option></select></label>
+      <label>Medición matinal<select id="sMorn"><option value="2">2 min</option><option value="3">3 min</option><option value="5">5 min</option></select></label>
+      <span style="flex:1"></span>
+      <button id="bExp">Exportar JSON</button>
+      <button id="bCsv">Exportar CSV</button>
+      <button id="bImp">Importar JSON</button>
+      <input type="file" id="fImp" accept=".json" style="display:none">
+    </div>
+    <div class="note" style="margin-top:10px">
+      Datos guardados solo en este navegador. Métodos: RMSSD sobre intervalos RR filtrados (300–2000 ms, Δ≤20 % respecto al anterior);
+      línea base y valor diario de ln RMSSD según Plews et al. (2012–2013); TRIMP de Banister (k=0,64·e^{1,92·ΔFC} hombre, 0,86·e^{1,67·ΔFC} mujer) y de Edwards (zonas 50–100 % FCmáx);
+      CTL/ATL como medias exponenciales de 42 y 7 días.
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* ---------- persistencia ---------- */
+const KEY = "pulso.v1";
+const DEF = {settings:{hrmax:190,hrrest:50,sex:"m",morningMin:3}, morning:[], days:{}, sessions:[]};
+function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && s.settings) return Object.assign(structuredClone(DEF), s); }catch(e){} return structuredClone(DEF); }
+let S = load();
+let saveT = 0;
+function save(force){ const now = Date.now(); if(!force && now - saveT < 5000) return; saveT = now; try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ setMsg("No se pudo guardar en el navegador: " + e.message); } }
+window.addEventListener("beforeunload", ()=>save(true));
+
+/* ---------- utilidades ---------- */
+const $ = id => document.getElementById(id);
+const todayKey = (t=Date.now()) => { const d = new Date(t); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const fmtDur = s => { s=Math.round(s); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60; return (h? h+":"+String(m).padStart(2,"0") : m)+":"+String(x).padStart(2,"0"); };
+const mean = a => a.reduce((x,y)=>x+y,0)/a.length;
+const sd = a => { const m=mean(a); return Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/(a.length-1||1)); };
+function setMsg(t){ $("rrMsg").textContent = t||""; }
+const ZCOL = ["#3a4150","#4f8cc9","#3fb6a8","#c9b84f","#e0a03a","#e0605a"];
+const ZNAME = ["<50%","Z1","Z2","Z3","Z4","Z5"];
+
+/* ---------- parser estándar Heart Rate Measurement (0x2A37) ---------- */
+function parseHRM(dv){
+  const flags = dv.getUint8(0);
+  let o = 1, hr;
+  if(flags & 0x01){ hr = dv.getUint16(o, true); o += 2; } else { hr = dv.getUint8(o); o += 1; }
+  if(flags & 0x08) o += 2;                       // energía gastada
+  const rr = [];
+  if(flags & 0x10){ while(o + 1 < dv.byteLength){ rr.push(dv.getUint16(o, true) * 1000 / 1024); o += 2; } }
+  return {hr, rr, contact: (flags & 0x06) === 0x04 ? false : true};
+}
+
+/* ---------- fisiología ---------- */
+function zoneOf(hr){ const p = hr / S.settings.hrmax; if(p<0.5) return 0; if(p<0.6) return 1; if(p<0.7) return 2; if(p<0.8) return 3; if(p<0.9) return 4; return 5; }
+function banisterRate(hr){ // TRIMP por minuto
+  const {hrmax, hrrest, sex} = S.settings;
+  const r = Math.max(0, Math.min(1, (hr - hrrest) / (hrmax - hrrest)));
+  return sex === "f" ? r * 0.86 * Math.exp(1.67 * r) : r * 0.64 * Math.exp(1.92 * r);
+}
+function cleanRR(list){ // devuelve {clean, rejected}
+  const out = []; let rej = 0, prev = null;
+  for(const v of list){
+    if(v < 300 || v > 2000 || (prev !== null && Math.abs(v - prev) / prev > 0.2)){ rej++; prev = (v>=300&&v<=2000)? v : prev; continue; }
+    out.push(v); prev = v;
+  }
+  return {clean: out, rejected: rej};
+}
+function rmssd(rr){ if(rr.length < 3) return null; let s = 0; for(let i=1;i<rr.length;i++) s += (rr[i]-rr[i-1])**2; return Math.sqrt(s/(rr.length-1)); }
+
+/* ---------- estado en vivo ---------- */
+let live = [];        // {t,hr} últimos 15 min
+let rrLive = [];      // {t,rr} últimos 60 s (brutos)
+let lastT = null, lastHR = null, gotRR = false;
+let session = null, morning = null;
+
+function day(k){ return S.days[k] || (S.days[k] = {trimp:0, edwards:0, sec:0, zoneSec:[0,0,0,0,0,0]}); }
+
+function onSample(hr, rrs, t){
+  if(!hr || hr < 25 || hr > 240) return;
+  const dt = lastT ? Math.min((t - lastT)/1000, 5) : 1;   // huecos >5 s no cuentan
+  lastT = t; lastHR = hr;
+  const z = zoneOf(hr), tr = banisterRate(hr) * dt / 60, ed = z * dt / 60;
+  const d = day(todayKey(t)); d.trimp += tr; d.edwards += ed; d.sec += dt; d.zoneSec[z] += dt;
+  if(session){ session.trimp += tr; session.edwards += ed; session.sec += dt; session.hrSum += hr*dt; session.max = Math.max(session.max, hr); }
+  live.push({t, hr}); while(live.length && live[0].t < t - 15*60e3) live.shift();
+  if(rrs.length){ gotRR = true; for(const r of rrs){ rrLive.push({t, rr:r}); if(morning) morning.rr.push({t, rr:r}); } }
+  while(rrLive.length && rrLive[0].t < t - 60e3) rrLive.shift();
+  if(morning) morning.hr.push({t, hr});
+  save();
+}
+
+/* ---------- Bluetooth ---------- */
+let device = null, userDisc = false, retries = 0, sim = null;
+function setConn(on, txt){
+  $("dot").classList.toggle("on", on); $("status").textContent = txt;
+  $("bDisc").disabled = !on; $("bConnect").disabled = on; $("bMorning").disabled = !on; $("bSess").disabled = !on && !session;
+}
+async function connect(){
+  if(!navigator.bluetooth){ setMsg("Este navegador no tiene Web Bluetooth. Usa Edge o Chrome en Windows, Mac o Android (no funciona en iPhone)."); return; }
+  try{
+    device = await navigator.bluetooth.requestDevice({
+      filters:[{services:["heart_rate"]},{namePrefix:"WHOOP"},{namePrefix:"Whoop"}],
+      optionalServices:["heart_rate","battery_service"]
+    });
+    device.addEventListener("gattserverdisconnected", onDisc);
+    userDisc = false; retries = 0;
+    await gattConnect();
+  }catch(e){ if(e.name !== "NotFoundError") setMsg("Error al conectar: " + e.message); }
+}
+async function gattConnect(){
+  setConn(false, "Conectando a " + (device.name||"dispositivo") + "…");
+  const server = await device.gatt.connect();
+  let svc;
+  try{ svc = await server.getPrimaryService("heart_rate"); }
+  catch(e){ setConn(false, "Sin servicio de FC"); setMsg("La pulsera no expone el servicio estándar de FC. Cierra la app oficial (o apaga el Bluetooth del móvil) y activa la emisión de FC si tu modelo lo requiere."); return; }
+  const ch = await svc.getCharacteristic("heart_rate_measurement");
+  ch.addEventListener("characteristicvaluechanged", ev => { const p = parseHRM(ev.target.value); onSample(p.hr, p.rr, Date.now()); });
+  await ch.startNotifications();
+  retries = 0; setConn(true, "Conectado · " + (device.name||"pulsera")); setMsg("");
+  try{ const b = await server.getPrimaryService("battery_service"); const c = await b.getCharacteristic("battery_level"); const v = await c.readValue(); $("batt").textContent = "Batería " + v.getUint8(0) + " %"; }catch(e){ $("batt").textContent = ""; }
+}
+function onDisc(){
+  lastT = null;
+  if(userDisc){ setConn(false, "Desconectado"); return; }
+  if(retries >= 6){ setConn(false, "Conexión perdida"); setMsg("No se pudo reconectar. Pulsa Conectar."); return; }
+  const wait = Math.min(30, 2 ** retries) * 1000; retries++;
+  setConn(false, "Reconectando en " + wait/1000 + " s…");
+  setTimeout(()=>gattConnect().catch(()=>onDisc()), wait);
+}
+function disconnect(){
+  userDisc = true;
+  if(sim){ clearInterval(sim); sim = null; $("bSim").textContent = "Modo demo"; setConn(false, "Desconectado"); lastT = null; return; }
+  if(device && device.gatt.connected) device.gatt.disconnect(); else setConn(false, "Desconectado");
+}
+
+/* ---------- modo demo: genera paquetes 0x2A37 reales y los pasa por el parser ---------- */
+function toggleSim(){
+  if(sim){ disconnect(); return; }
+  let base = 62, ph = 0;
+  sim = setInterval(()=>{
+    ph += 0.02; const target = base + 40*Math.max(0, Math.sin(ph/3)) ;
+    const rrs = []; let acc = 0;
+    while(acc < 1000){ const hrInst = target + 4*Math.sin(ph*7 + acc/300) + (Math.random()-0.5)*3; const r = 60000/hrInst; rrs.push(r); acc += r; }
+    const hr = Math.round(60000/mean(rrs));
+    const buf = new DataView(new ArrayBuffer(2 + rrs.length*2));
+    buf.setUint8(0, 0x10 | 0x06); buf.setUint8(1, hr);
+    rrs.forEach((r,i)=>buf.setUint16(2+i*2, Math.round(r*1024/1000), true));
+    const p = parseHRM(buf); onSample(p.hr, p.rr, Date.now());
+  }, 1000);
+  $("bSim").textContent = "Parar demo"; userDisc = false; setConn(true, "Modo demo (datos simulados)");
+}
+
+/* ---------- medición matinal ---------- */
+function startMorning(){
+  if(morning) return;
+  const dur = S.settings.morningMin * 60;
+  morning = {start: Date.now(), dur, rr:[], hr:[]};
+  $("bMorning").disabled = true;
+  const tick = setInterval(()=>{
+    const el = (Date.now() - morning.start)/1000;
+    $("mCount").textContent = el < 30 ? "Estabilizando… " + Math.ceil(30-el) + " s" : "Midiendo… " + fmtDur(dur - el);
+    if(el >= dur){ clearInterval(tick); finishMorning(); }
+  }, 500);
+}
+function finishMorning(){
+  const t0 = morning.start + 30e3;
+  const raw = morning.rr.filter(x=>x.t >= t0).map(x=>x.rr);
+  const {clean, rejected} = cleanRR(raw);
+  const hrs = morning.hr.filter(x=>x.t >= t0).map(x=>x.hr);
+  morning = null; $("bMorning").disabled = !$("bDisc").disabled ? false : true;
+  if(clean.length < 60){ $("mCount").textContent = "Medición no válida: " + clean.length + " latidos limpios (mín. 60). ¿La pulsera envía intervalos RR?"; return; }
+  const v = rmssd(clean);
+  const rec = {date: todayKey(), ts: Date.now(), rmssd: +v.toFixed(1), ln: +Math.log(v).toFixed(3), rhr: Math.round(Math.min(...rollingMin(hrs))), n: clean.length, art: +(rejected/(raw.length||1)*100).toFixed(1)};
+  S.morning = S.morning.filter(m=>m.date !== rec.date); S.morning.push(rec); S.morning.sort((a,b)=>a.date<b.date?-1:1);
+  save(true); $("mCount").textContent = "Guardado: RMSSD " + rec.rmssd + " ms";
+  renderTables(); renderReady(); drawHrv();
+}
+function rollingMin(h){ // FC reposo = mínimo de medias móviles de 10 muestras
+  if(h.length < 10) return h.length? h : [0];
+  const r=[]; for(let i=0;i+10<=h.length;i++) r.push(mean(h.slice(i,i+10))); return r;
+}
+
+/* ---------- disposición ---------- */
+function baselineFor(date){ // registros de los 30 días previos
+  const lim = new Date(date); lim.setDate(lim.getDate()-30); const lk = todayKey(lim);
+  return S.morning.filter(m=>m.date < date && m.date >= lk);
+}
+function roll7(idx){ const d = new Date(S.morning[idx].date); d.setDate(d.getDate()-6); const k = todayKey(d); return S.morning.filter((m,i)=>i<=idx && m.date>=k).map(m=>m.ln); }
+function renderReady(){
+  const box = $("readyBox");
+  if(!S.morning.length){ box.innerHTML = '<span class="note">Sin mediciones aún.</span>'; return; }
+  const last = S.morning[S.morning.length-1];
+  const base = baselineFor(last.date);
+  let tag, txt;
+  if(base.length < 5){ tag = '<span class="tag" style="background:#333a48">Calibrando</span>'; txt = "Faltan " + (5-base.length) + " mediciones previas para tener línea base."; }
+  else{
+    const lns = base.map(m=>m.ln), m = mean(lns), s = sd(lns), z = (last.ln - m)/(s||1e-9);
+    const r7 = mean(roll7(S.morning.length-1));
+    const rh = mean(base.map(b=>b.rhr));
+    const swc = 0.5*s;
+    let col, lab;
+    if(last.ln < m - swc){ col = "var(--bad)"; lab = "Baja"; } else if(last.ln > m + swc){ col = "var(--good)"; lab = "Alta"; } else { col = "var(--acc)"; lab = "Normal"; }
+    tag = `<span class="tag" style="background:${col};color:#0b0d11">${lab}</span>`;
+    txt = `ln RMSSD ${last.ln.toFixed(2)} vs base ${m.toFixed(2)} (z ${z>=0?"+":""}${z.toFixed(2)}, ${((Math.exp(last.ln-m)-1)*100).toFixed(0)} %)<br>Media 7 d: ${r7.toFixed(2)} · FC reposo ${last.rhr} (${last.rhr-rh>=0?"+":""}${(last.rhr-rh).toFixed(0)} vs base)`;
+  }
+  box.innerHTML = `<div class="row"><span class="big" style="font-size:40px">${last.rmssd}</span><span class="unit">ms</span>${tag}</div><div class="note" style="margin-top:6px">${last.date}<br>${txt}</div>`;
+}
+
+/* ---------- carga CTL/ATL ---------- */
+function loadSeries(n=60){
+  const out = []; let ctl = 0, atl = 0;
+  const keys = Object.keys(S.days).sort();
+  const start = new Date(keys.length ? keys[0] : todayKey()); const end = new Date(todayKey());
+  for(let d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
+    const k = todayKey(d), tr = S.days[k] ? S.days[k].trimp : 0;
+    ctl += (tr - ctl)/42; atl += (tr - atl)/7; out.push({k, tr, ctl, atl});
+  }
+  return out.slice(-n);
+}
+
+/* ---------- sesiones ---------- */
+let sessTick = null;
+function toggleSession(){
+  if(!session){
+    session = {start: Date.now(), trimp:0, edwards:0, sec:0, hrSum:0, max:0};
+    $("bSess").textContent = "Terminar sesión";
+    sessTick = setInterval(renderSession, 1000);
+  } else {
+    clearInterval(sessTick);
+    if(session.sec >= 60) S.sessions.push({ts: session.start, sec: Math.round(session.sec), avg: Math.round(session.hrSum/session.sec), max: session.max, trimp: +session.trimp.toFixed(1), edwards: +session.edwards.toFixed(1)});
+    session = null; save(true); $("bSess").textContent = "Iniciar sesión"; $("bSess").disabled = $("bDisc").disabled; renderTables();
+  }
+}
+function renderSession(){
+  if(!session) return;
+  $("sDur").textContent = fmtDur(session.sec); $("sTrimp").textContent = session.trimp.toFixed(1);
+  $("sAvg").textContent = session.sec ? Math.round(session.hrSum/session.sec) : "--"; $("sMax").textContent = session.max || "--";
+}
+
+/* ---------- gráficos ---------- */
+function prep(c){ const r = window.devicePixelRatio||1, w = c.clientWidth, h = c.height/ (c._r||1); c._r = r; c.width = w*r; c.height = h*r; c.style.height = h+"px"; const x = c.getContext("2d"); x.setTransform(r,0,0,r,0,0); return {x, w, h}; }
+function axes(x, w, h, pad, lo, hi, ticks){
+  x.strokeStyle = "#262b36"; x.fillStyle = "#8b93a3"; x.font = "11px system-ui"; x.lineWidth = 1;
+  for(let i=0;i<=ticks;i++){ const v = lo + (hi-lo)*i/ticks, y = h-pad.b - (h-pad.t-pad.b)*i/ticks; x.beginPath(); x.moveTo(pad.l,y); x.lineTo(w-pad.r,y); x.stroke(); x.fillText((Math.abs(hi-lo)<10? v.toFixed(1): Math.round(v)), 4, y+4); }
+}
+function drawLive(){
+  const c = $("cLive"), {x,w,h} = prep(c), pad = {l:34,r:8,t:8,b:18};
+  x.clearRect(0,0,w,h);
+  const now = Date.now(), t0 = now - 15*60e3;
+  const hrs = live.map(p=>p.hr); const lo = Math.max(30, Math.min(...hrs, S.settings.hrrest) - 5), hi = Math.max(...hrs, 120) + 5;
+  // bandas de zona
+  for(let z=1; z<=5; z++){ const a = S.settings.hrmax*(0.4+0.1*z), b = S.settings.hrmax*(0.5+0.1*z);
+    const ya = h-pad.b-(h-pad.t-pad.b)*(Math.max(lo,Math.min(hi,a))-lo)/(hi-lo), yb = h-pad.b-(h-pad.t-pad.b)*(Math.max(lo,Math.min(hi,b))-lo)/(hi-lo);
+    x.fillStyle = ZCOL[z] + "18"; x.fillRect(pad.l, yb, w-pad.l-pad.r, ya-yb); }
+  axes(x,w,h,pad,lo,hi,4);
+  x.fillStyle="#8b93a3"; ["-15 min","-10","-5","ahora"].forEach((l,i)=>x.fillText(l, pad.l + (w-pad.l-pad.r)*i/3 - (i===3?28:0), h-4));
+  if(live.length < 2) return;
+  x.strokeStyle = "#3fb6a8"; x.lineWidth = 2; x.beginPath();
+  live.forEach((p,i)=>{ const X = pad.l + (w-pad.l-pad.r)*(p.t-t0)/(now-t0), Y = h-pad.b-(h-pad.t-pad.b)*(p.hr-lo)/(hi-lo); i? x.lineTo(X,Y) : x.moveTo(X,Y); });
+  x.stroke();
+}
+function drawHrv(){
+  const c = $("cHrv"), {x,w,h} = prep(c), pad = {l:34,r:8,t:8,b:18};
+  x.clearRect(0,0,w,h);
+  const M = S.morning.slice(-60);
+  if(M.length < 1){ x.fillStyle="#8b93a3"; x.font="12px system-ui"; x.fillText("Sin mediciones matinales", pad.l+8, h/2); return; }
+  const off = S.morning.length - M.length;
+  const band = M.map((m,i)=>{ const b = baselineFor(m.date).map(z=>z.ln); return b.length>=5 ? {m:mean(b), s:sd(b)} : null; });
+  const r7 = M.map((m,i)=>mean(roll7(off+i)));
+  const vals = M.map(m=>m.ln).concat(r7); band.forEach(b=>{ if(b){ vals.push(b.m+b.s*0.5, b.m-b.s*0.5);} });
+  const lo = Math.min(...vals)-0.2, hi = Math.max(...vals)+0.2;
+  axes(x,w,h,pad,lo,hi,4);
+  const X = i => pad.l + (w-pad.l-pad.r)*(M.length===1? 0.5 : i/(M.length-1)), Y = v => h-pad.b-(h-pad.t-pad.b)*(v-lo)/(hi-lo);
+  // banda normal
+  x.fillStyle = "#3fb6a822"; x.beginPath(); let started = false;
+  band.forEach((b,i)=>{ if(b){ const p=[X(i),Y(b.m+0.5*b.s)]; started? x.lineTo(...p) : (x.moveTo(...p), started=true); } });
+  for(let i=band.length-1;i>=0;i--){ const b=band[i]; if(b) x.lineTo(X(i), Y(b.m-0.5*b.s)); }
+  if(started){ x.closePath(); x.fill(); }
+  // media 7 d
+  x.strokeStyle = "#c9b84f"; x.lineWidth = 2; x.beginPath(); r7.forEach((v,i)=> i? x.lineTo(X(i),Y(v)) : x.moveTo(X(i),Y(v))); x.stroke();
+  // puntos diarios
+  M.forEach((m,i)=>{ const b=band[i]; x.fillStyle = !b ? "#8b93a3" : m.ln < b.m-0.5*b.s ? "#e0605a" : m.ln > b.m+0.5*b.s ? "#58c27d" : "#3fb6a8"; x.beginPath(); x.arc(X(i),Y(m.ln),3.5,0,7); x.fill(); });
+  x.fillStyle="#8b93a3"; x.fillText(M[0].date.slice(5), pad.l, h-4); x.fillText(M[M.length-1].date.slice(5), w-pad.r-32, h-4);
+}
+function drawLoad(){
+  const c = $("cLoad"), {x,w,h} = prep(c), pad = {l:34,r:8,t:8,b:18};
+  x.clearRect(0,0,w,h);
+  const L = loadSeries(60); if(!L.length) return;
+  const hi = Math.max(10, ...L.map(d=>Math.max(d.tr,d.ctl,d.atl)))*1.1;
+  axes(x,w,h,pad,0,hi,4);
+  const bw = (w-pad.l-pad.r)/L.length, Y = v => h-pad.b-(h-pad.t-pad.b)*v/hi;
+  x.fillStyle = "#4f8cc9aa"; L.forEach((d,i)=>{ x.fillRect(pad.l+i*bw+1, Y(d.tr), Math.max(1,bw-2), h-pad.b-Y(d.tr)); });
+  [["ctl","#3fb6a8"],["atl","#e0605a"]].forEach(([k,col])=>{ x.strokeStyle=col; x.lineWidth=2; x.beginPath(); L.forEach((d,i)=>{ const X=pad.l+i*bw+bw/2; i? x.lineTo(X,Y(d[k])) : x.moveTo(X,Y(d[k])); }); x.stroke(); });
+  x.fillStyle="#8b93a3"; x.fillText(L[0].k.slice(5), pad.l, h-4); x.fillText(L[L.length-1].k.slice(5), w-pad.r-32, h-4);
+}
+
+/* ---------- render ---------- */
+function renderLive(){
+  $("hr").textContent = lastHR && lastT && Date.now()-lastT < 10e3 ? lastHR : "--";
+  if(lastHR){ $("hrPct").textContent = Math.round(lastHR/S.settings.hrmax*100); $("zoneNow").textContent = ZNAME[zoneOf(lastHR)]; }
+  const raw = rrLive.map(r=>r.rr), {clean, rejected} = cleanRR(raw), v = rmssd(clean);
+  $("rrLast").textContent = raw.length ? Math.round(raw[raw.length-1]) : "--";
+  $("rmssd").textContent = v ? v.toFixed(0) : "--"; $("lnr").textContent = v ? Math.log(v).toFixed(2) : "--";
+  $("nRR").textContent = clean.length; $("art").textContent = raw.length ? Math.round(rejected/raw.length*100)+"%" : "0%";
+  if(lastT && !gotRR && live.length > 15) setMsg("La pulsera envía FC pero no intervalos RR: la HRV no está disponible con este flujo.");
+  const d = day(todayKey()); $("trimpDay").textContent = d.trimp.toFixed(0);
+  const tot = d.zoneSec.reduce((a,b)=>a+b,0)||1;
+  $("zoneBar").innerHTML = d.zoneSec.map((s,i)=>`<div style="width:${s/tot*100}%;background:${ZCOL[i]}"></div>`).join("");
+  $("zoneLeg").innerHTML = d.zoneSec.map((s,i)=>`<span><span style="color:${ZCOL[i]}">■</span> ${ZNAME[i]} ${fmtDur(s)}</span>`).join("");
+  const L = loadSeries(1)[0]; if(L){ $("ctl").textContent = L.ctl.toFixed(0); $("atl").textContent = L.atl.toFixed(0); $("tsb").textContent = (L.ctl-L.atl).toFixed(0); }
+  drawLive();
+}
+function renderTables(){
+  $("tSess").innerHTML = S.sessions.slice().reverse().map(s=>`<tr><td>${new Date(s.ts).toLocaleString("es-ES",{dateStyle:"short",timeStyle:"short"})}</td><td>${fmtDur(s.sec)}</td><td>${s.avg}</td><td>${s.max}</td><td>${s.trimp}</td><td>${s.edwards}</td></tr>`).join("") || '<tr><td colspan="6" class="note">Sin sesiones</td></tr>';
+  $("tMorn").innerHTML = S.morning.slice().reverse().map(m=>`<tr><td>${m.date}</td><td>${m.rmssd}</td><td>${m.ln}</td><td>${m.rhr}</td><td>${m.n}</td><td>${m.art}%</td><td><button data-del="${m.date}" style="padding:1px 7px">×</button></td></tr>`).join("") || '<tr><td colspan="7" class="note">Sin mediciones</td></tr>';
+}
+$("tMorn").addEventListener("click", e=>{ const k = e.target.dataset.del; if(!k) return; S.morning = S.morning.filter(m=>m.date!==k); save(true); renderTables(); renderReady(); drawHrv(); });
+
+/* ---------- ajustes / export ---------- */
+function bindSettings(){
+  $("sHrmax").value = S.settings.hrmax; $("sHrrest").value = S.settings.hrrest; $("sSex").value = S.settings.sex; $("sMorn").value = S.settings.morningMin;
+  const upd = ()=>{ S.settings = {hrmax:+$("sHrmax").value||190, hrrest:+$("sHrrest").value||50, sex:$("sSex").value, morningMin:+$("sMorn").value}; save(true); renderLive(); };
+  ["sHrmax","sHrrest","sSex","sMorn"].forEach(id=>$(id).addEventListener("change", upd));
+}
+function download(name, text, type){ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text],{type})); a.download = name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000); }
+$("bExp").onclick = ()=>download("pulso-"+todayKey()+".json", JSON.stringify(S,null,1), "application/json");
+$("bCsv").onclick = ()=>{
+  const days = Object.keys(S.days).sort(), mm = Object.fromEntries(S.morning.map(m=>[m.date,m])), L = Object.fromEntries(loadSeries(100000).map(d=>[d.k,d]));
+  const rows = ["fecha;rmssd_ms;ln_rmssd;fc_reposo;trimp;edwards;min_registrados;ctl;atl"];
+  [...new Set(days.concat(Object.keys(mm)))].sort().forEach(k=>{ const d=S.days[k]||{}, m=mm[k]||{}, l=L[k]||{}; rows.push([k,m.rmssd??"",m.ln??"",m.rhr??"",(d.trimp??0).toFixed(1),(d.edwards??0).toFixed(1),((d.sec??0)/60).toFixed(0),(l.ctl??0).toFixed(1),(l.atl??0).toFixed(1)].join(";").replace(/\./g,",")); });
+  download("pulso-"+todayKey()+".csv", rows.join("\n"), "text/csv");
+};
+$("bImp").onclick = ()=>$("fImp").click();
+$("fImp").onchange = async e=>{ try{ const d = JSON.parse(await e.target.files[0].text()); if(!d.settings) throw new Error("formato no válido"); S = Object.assign(structuredClone(DEF), d); save(true); bindSettings(); renderAll(); setMsg("Datos importados."); }catch(err){ setMsg("Error al importar: " + err.message); } };
+
+/* ---------- arranque ---------- */
+function renderAll(){ renderLive(); renderTables(); renderReady(); drawHrv(); drawLoad(); }
+$("bConnect").onclick = connect; $("bDisc").onclick = disconnect; $("bSim").onclick = toggleSim;
+$("bMorning").onclick = startMorning; $("bSess").onclick = toggleSession;
+bindSettings(); renderAll();
+setInterval(renderLive, 1000); setInterval(drawLoad, 30000);
+window.addEventListener("resize", renderAll);
+if(!navigator.bluetooth) setMsg("Abre este archivo en Edge o Chrome de un ordenador para conectar por Bluetooth.");
+</script>
+</body>
+</html>
